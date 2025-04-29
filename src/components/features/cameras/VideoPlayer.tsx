@@ -75,7 +75,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
           console.log("Manifest parsed, HLS ready.");
           setStatus('ready');
-          // No need to explicitly call play() here, browser controls handle it.
+          // Try to play after manifest parsed for autoplay
+          videoElement.play().catch(err => console.warn("Autoplay prevented:", err));
       });
 
        hls.on(Hls.Events.ERROR, (event, data) => {
@@ -144,7 +145,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
      const handleCanPlay = () => {
          if (status === 'loading') {
              console.log("Video can play.");
-             setStatus('ready'); // Mark as ready, browser controls take over
+             setStatus('ready'); // Mark as ready
+              // Attempt autoplay when video is ready
+              videoElement.play().catch(err => console.warn("Autoplay after canplay prevented:", err));
          }
      };
        const handleWaiting = () => {
@@ -178,7 +181,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
           cleanupHls();
           videoElement.src = src;
           videoElement.load(); // Trigger loading
-          // No need to add loadedmetadata listener for play if using default controls
+          videoElement.addEventListener('loadedmetadata', () => {
+              videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+          });
         } else {
           console.error("HLS is not supported in this browser.");
           setStatus('error');
@@ -199,6 +204,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             videoElement.removeEventListener('canplay', handleCanPlay);
             videoElement.removeEventListener('waiting', handleWaiting);
              videoElement.removeEventListener('playing', handlePlaying);
+              videoElement.removeEventListener('loadedmetadata', () => { // Ensure listener removal
+                videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+              });
         }
         setStatus('idle'); // Reset state on cleanup
     };
@@ -218,8 +226,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             )}
             aria-label="Camera Stream Player"
             playsInline
-            muted={false} // Default controls usually handle mute state, start unmuted generally
-            // autoPlay // Handled by browser/user interaction with controls
+            muted={false} // Start unmuted, autoplay might be blocked by browser if not muted initially.
+            autoPlay // Add autoPlay attribute
         />
 
         {/* Loading Overlay - Show only during initial load or buffering */}
