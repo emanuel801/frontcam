@@ -1,15 +1,16 @@
+
 "use client";
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle, LayoutGrid } from 'lucide-react'; // Added LayoutGrid icon
+import { Camera, UserCircle } from 'lucide-react'; // Removed LayoutGrid icon
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/cameras', label: 'Cameras', icon: Camera },
-  { href: '/environments', label: 'Environments', icon: LayoutGrid }, // Added Environments item
+  // { href: '/environments', label: 'Environments', icon: LayoutGrid }, // Removed Environments item
   { href: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
@@ -24,7 +25,11 @@ export default function BottomNav() {
       <div className="flex justify-around items-center h-full max-w-md mx-auto px-2">
         {navItems.map((item) => {
           // Improved active state check for sub-pages
-           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+           // Special check for cameras to include sub-paths like /cameras/environment/* and /cameras/[cameraId]
+           const isActive = item.href === '/cameras'
+            ? pathname.startsWith('/cameras')
+            : pathname === item.href;
+
 
           return (
             <Link href={item.href} key={item.href} passHref legacyBehavior>
