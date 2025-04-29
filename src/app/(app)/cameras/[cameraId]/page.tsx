@@ -9,7 +9,7 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower } from 'lucide-react'; // Added Clock, RadioTower
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower } from 'lucide-react';
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -36,13 +36,13 @@ export default function CameraPlayerPage() {
           return foundCamera;
       },
       enabled: !!cameraId,
-      staleTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
   });
 
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
-  const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track if we are viewing a recording
+  const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
 
    // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
@@ -59,25 +59,27 @@ export default function CameraPlayerPage() {
 
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
 
-  // Mutation for timestamp search
+  // Mutation for timestamp search (still uses single timestamp for now)
   const { mutate: searchTimestampMutation } = useMutation({
-    mutationFn: async ({ timestamp }: { timestamp: number }) => { // Updated signature
+    mutationFn: async ({ timestamp }: { timestamp: number }) => { // Still uses single timestamp
         if (!cameraId) throw new Error("Camera ID is missing");
         console.log(`Searching for timestamp ${timestamp} for camera ${cameraId}`);
         setIsLoadingSearch(true);
         // Reset playback state before loading new stream (browser will handle this)
+        // NOTE: In a real implementation, the backend would handle the time range.
+        // Here, we just use the start timestamp for demonstration.
         return getStreamUrlForTimestamp(cameraId, timestamp);
     },
     onSuccess: (newUrl, variables) => {
         console.log("Timestamp search successful, new URL:", newUrl);
         setCurrentStreamUrl(newUrl);
-        // Convert seconds back to Date object for display
+        // Convert seconds back to Date object for display (using the start timestamp)
         const timestampDate = new Date(variables.timestamp * 1000);
         setSearchedTimestamp(timestampDate);
         setIsLoadingSearch(false);
         toast({
           title: "Recording Found",
-          description: `Loading video from ${format(timestampDate, 'PPpp')}.`,
+          description: `Loading video from ${format(timestampDate, 'PPpp')}.`, // Displaying start time
           className: "bg-green-100 border-green-300 text-green-800",
         });
          // Browser controls will handle play state
@@ -105,10 +107,13 @@ export default function CameraPlayerPage() {
     },
   });
 
-  // Updated handleSearch to accept single dateTime
-  const handleSearch = (dateTime: Date) => {
-    const timestampInSeconds = Math.floor(dateTime.getTime() / 1000);
-    searchTimestampMutation({ timestamp: timestampInSeconds });
+  // Updated handleSearch to accept start and end dateTime, but currently only uses start.
+  const handleSearch = (startDateTime: Date, endDateTime: Date) => {
+    console.log(`Search requested for range: ${startDateTime} - ${endDateTime}`);
+    // TODO: In a real application, you would likely pass both start and end timestamps
+    // to the backend mutation. For now, we only use the start time for getStreamUrlForTimestamp.
+    const startTimestampInSeconds = Math.floor(startDateTime.getTime() / 1000);
+    searchTimestampMutation({ timestamp: startTimestampInSeconds });
   };
 
    const switchToLive = () => {
