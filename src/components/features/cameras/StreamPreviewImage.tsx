@@ -6,6 +6,7 @@ import Hls from 'hls.js';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertTriangle, CameraOff } from 'lucide-react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils'; // Import cn utility
 
 interface StreamPreviewImageProps {
   streamUrl: string;
@@ -209,42 +210,45 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
   }, [streamUrl]); // Re-run effect only if streamUrl changes
 
   return (
-    <div className="relative w-full h-full aspect-video bg-muted overflow-hidden">
+    <div className="relative w-full h-full aspect-video bg-muted overflow-hidden rounded-lg"> {/* Ensure rounded corners */}
       {/* Hidden video and canvas elements */}
       <video ref={videoRef} className="absolute -top-[9999px] -left-[9999px] w-px h-px" crossOrigin="anonymous" />
       <canvas ref={canvasRef} className="absolute -top-[9999px] -left-[9999px]" />
 
+      {/* Enhanced Loading State */}
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/30">
-          <LoadingSpinner size={24} />
-          <p className="text-xs mt-1">Loading Preview...</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-br from-muted/70 to-muted/80 backdrop-blur-sm transition-opacity duration-300">
+          <LoadingSpinner size={24} className="mb-2 text-primary" />
+          <p className="text-xs font-medium animate-pulse">Loading Preview...</p>
         </div>
       )}
 
+      {/* Enhanced Error State */}
       {isError && !isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive-foreground bg-destructive/80 p-2 text-center">
-          <CameraOff size={24} className="mb-1" />
-          <p className="text-xs font-medium">Preview Unavailable</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive-foreground bg-gradient-to-br from-destructive/70 to-destructive/80 p-2 text-center backdrop-blur-sm transition-opacity duration-300">
+          <CameraOff size={28} className="mb-1.5 opacity-80" />
+          <p className="text-xs font-semibold">Preview Unavailable</p>
           {/* Hide detailed error message from UI unless debugging */}
           {/* <p className="text-[10px] opacity-80">{errorMessage}</p> */}
         </div>
       )}
 
+      {/* Preview Image */}
       {!isLoading && !isError && previewSrc && (
          <Image
             src={previewSrc}
             alt={alt}
             layout="fill"
             objectFit="cover"
-            className="transition-opacity duration-300"
+            className="transition-opacity duration-300" // Fade in effect
             unoptimized // Important as data URLs don't need Next.js optimization
           />
       )}
 
       {/* Fallback display if loading completes without error but no preview was generated */}
       {!isLoading && !isError && !previewSrc && (
-           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/10 p-2 text-center">
-                <CameraOff size={24} className="mb-1" />
+           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/10 p-2 text-center transition-opacity duration-300">
+                <CameraOff size={24} className="mb-1 opacity-60" />
                 <p className="text-xs">No Preview</p>
             </div>
       )}

@@ -54,8 +54,8 @@ export default function LoginPage() {
   return (
     // Changed background gradient direction and colors slightly
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-background via-muted/30 to-background px-4 py-12">
-        {/* Enhanced card shadow and subtle border */}
-      <Card className="w-full max-w-sm shadow-xl rounded-xl border border-border/50 bg-card/95 backdrop-blur-sm">
+        {/* Enhanced card shadow and subtle border, added background blur and adjusted bg color */}
+      <Card className="w-full max-w-sm shadow-xl rounded-xl border border-border/50 bg-card/95 backdrop-blur-sm overflow-hidden">
         <CardHeader className="space-y-2 text-center pt-8 pb-4">
           {/* Larger icon, primary color */}
           <ShieldCheck className="mx-auto h-14 w-14 text-primary mb-3" />
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
-            {/* Enhanced button styling */}
+            {/* Enhanced button styling with shadow and transition */}
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg py-3 text-base font-semibold shadow-lg transition-all duration-300 hover:shadow-primary/30" disabled={isLoading}>
              {isLoading ? (
                 <>

@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle } from 'lucide-react'; // Removed unused Home icon
+import { Camera, UserCircle } from 'lucide-react'; // Corrected icons
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -22,7 +22,7 @@ export default function BottomNav() {
       <div className="flex justify-around items-center h-full max-w-md mx-auto px-2">
         {navItems.map((item) => {
            const isActive = item.href === '/cameras'
-            ? pathname.startsWith('/cameras')
+            ? pathname.startsWith('/cameras') // Make cameras active for sub-routes like /cameras/environment/... and /cameras/[id]
             : pathname === item.href;
 
           return (

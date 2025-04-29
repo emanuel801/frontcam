@@ -44,8 +44,11 @@ export default function EnvironmentListPage() {
 
   return (
     <div className="space-y-8"> {/* Increased spacing */}
-       <div className="flex items-center space-x-3 mb-6 border-b border-border pb-4"> {/* Title styling */}
-         <Home className="h-10 w-10 text-primary" />
+       {/* Enhanced Title styling with larger icon and border */}
+       <div className="flex items-center space-x-4 mb-6 border-b border-border pb-4"> {/* Title styling */}
+         <div className="p-3 rounded-lg bg-primary/10 text-primary border border-primary/20">
+            <Home className="h-8 w-8" />
+         </div>
          <div>
              <h1 className="text-3xl font-bold tracking-tight text-primary">Camera Environments</h1>
              <p className="text-muted-foreground mt-1">Select an area to view live cameras.</p>
@@ -58,7 +61,7 @@ export default function EnvironmentListPage() {
           // Link to the specific environment's camera page
           <Link href={`/cameras/environment/${env.id}`} key={env.id} passHref legacyBehavior>
             <a className="group block">
-                {/* Enhanced Card styling: more prominent shadow, subtle border */}
+                {/* Enhanced Card styling: more prominent shadow, subtle border, added transform */}
                 <Card className="overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col bg-card border border-border/60 hover:border-primary/50 transform hover:-translate-y-1">
                 <CardHeader className="relative h-48 w-full p-0 bg-muted overflow-hidden"> {/* Added overflow-hidden */}
                     <Image
@@ -69,7 +72,7 @@ export default function EnvironmentListPage() {
                         className="transition-transform duration-300 group-hover:scale-110" // Slightly stronger scale effect
                         unoptimized // Use if picsum causes issues or for performance
                     />
-                    {/* Subtle gradient overlay */}
+                    {/* Subtle gradient overlay for better text visibility */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                      {/* Icon overlay on hover */}
                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40">
@@ -87,8 +90,9 @@ export default function EnvironmentListPage() {
           </Link>
         ))}
       </div>
+       {/* Improved empty state message */}
        {(!environments || environments.length === 0) && (
-            <div className="text-center py-16 col-span-full"> {/* Increased padding */}
+            <div className="text-center py-16 col-span-full bg-muted/50 rounded-lg border border-dashed border-border"> {/* Increased padding */}
                  <Home className="h-16 w-16 text-muted-foreground mx-auto mb-5 opacity-50" />
                  <p className="text-lg text-muted-foreground">No camera environments found.</p>
                  {/* Optionally add a button to refresh or contact support */}

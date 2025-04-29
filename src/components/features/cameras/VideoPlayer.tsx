@@ -227,7 +227,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
                 "w-full h-full object-contain",
                 // Keep video visible even during loading/error states
                 // Opacity is handled by the error overlay if needed
-                 status === 'error' && "opacity-80"
+                 status === 'error' && "opacity-80" // Slightly dim video on error
             )}
             aria-label="Camera Stream Player"
             playsInline
@@ -243,7 +243,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             </div>
         )} */}
 
-        {/* Error Overlay */}
+        {/* Enhanced Error Overlay */}
          {status === 'error' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-destructive/80 to-destructive/95 p-5 text-center pointer-events-none backdrop-blur-sm z-10">
                  <AlertCircle size={48} className="text-destructive-foreground mb-3 drop-shadow-md" />
@@ -252,7 +252,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             </div>
         )}
 
-        {/* Initial Idle State (No Source) */}
+        {/* Enhanced Initial Idle State (No Source) */}
         {status === 'idle' && !src && (
              <div className="absolute inset-0 flex flex-col justify-center items-center text-muted-foreground bg-gradient-to-br from-muted/50 to-muted/60 backdrop-blur-sm pointer-events-none z-10">
                  <WifiOff size={56} className="mb-3 text-muted-foreground/60 opacity-70"/>

@@ -64,17 +64,17 @@ export default function ProfilePage() {
   return (
     // Center content vertically and horizontally, more padding
     <div className="flex justify-center items-start min-h-[calc(100vh-8rem)] px-4 py-10"> {/* Changed items-center to items-start */}
-        {/* Enhanced card styling */}
+        {/* Enhanced card styling: added shadow, rounded corners, border, bg-blur */}
         <Card className="w-full max-w-md shadow-xl rounded-xl border border-border/50 bg-card/95 backdrop-blur-sm overflow-hidden">
             <CardHeader className="items-center text-center bg-gradient-to-b from-primary/10 to-transparent pt-8 pb-6 border-b border-border/50">
-                 {/* Larger, more prominent avatar */}
+                 {/* Larger, more prominent avatar with border and ring */}
                  <Avatar className="w-28 h-28 mb-5 border-[6px] border-background shadow-lg ring-2 ring-primary">
                     <AvatarImage src={`https://i.pravatar.cc/150?u=${user.username}`} alt={user.name || user.username} />
                     <AvatarFallback className="text-5xl bg-secondary text-secondary-foreground font-semibold border border-muted">
                         {getInitials(user.name)}
                     </AvatarFallback>
                 </Avatar>
-                {/* Display Name if available, otherwise username */}
+                {/* Display Name if available, otherwise username, added icon */}
                 <CardTitle className="text-3xl font-bold text-primary flex items-center gap-2.5">
                    <UserCircle2 className="h-7 w-7"/> {user.name || user.username}
                 </CardTitle>
@@ -109,6 +109,7 @@ export default function ProfilePage() {
 
             </CardContent>
              <CardFooter className="px-6 pb-8 pt-4 border-t border-border/50">
+                 {/* Enhanced Logout Button styling */}
                  <Button
                     onClick={handleLogout}
                     variant="destructive"

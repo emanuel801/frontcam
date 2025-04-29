@@ -138,6 +138,7 @@ export default function CameraPlayerPage() {
   if (isLoadingCamera) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-12rem)] space-y-4">
+        {/* Enhanced loading state */}
         <LoadingSpinner size={64} className="text-primary animate-spin-slow" />
         <p className="text-muted-foreground text-lg animate-pulse">Loading camera details...</p>
       </div>
@@ -148,10 +149,12 @@ export default function CameraPlayerPage() {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
          <Link href={backLink} passHref>
+            {/* Enhanced back button */}
             <Button variant="outline" size="sm" className="mb-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 ease-in-out transform hover:-translate-y-0.5">
                 <ChevronLeft className="mr-1 h-4 w-4" /> Back to Cameras
             </Button>
         </Link>
+        {/* Enhanced error alert */}
         <Alert variant="destructive" className="max-w-lg mx-auto rounded-lg shadow-lg border-destructive/60 bg-destructive/10 backdrop-blur-sm">
            <AlertTriangle className="h-5 w-5 text-destructive stroke-[2]"/>
           <AlertTitle className="font-semibold text-destructive">Error Loading Camera</AlertTitle>
@@ -174,15 +177,17 @@ export default function CameraPlayerPage() {
 
   return (
     <div className="space-y-6 pb-20"> {/* Adjusted spacing */}
-         {/* Header Section */}
+         {/* Enhanced Header Section */}
          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center space-x-4">
+                {/* Icon with gradient background and border */}
                 <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 via-primary/15 to-primary/20 text-primary border border-primary/30 shadow-md">
                     <Video className="h-8 w-8 stroke-[2]" />
                 </div>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-primary">{camera.name}</h1>
                     <p className="text-muted-foreground mt-1 line-clamp-2 max-w-prose">{camera.description}</p>
+                     {/* Enhanced Back link */}
                      <Link href={backLink} className="text-sm text-muted-foreground hover:text-primary inline-flex items-center mt-1.5 transition-colors duration-200 group">
                          <ChevronLeft className="mr-0.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Back to {camera.environmentName}
                      </Link>
@@ -190,8 +195,9 @@ export default function CameraPlayerPage() {
             </div>
          </div>
 
-         {/* Status Indicator (Live or Recording Time) - Moved outside the player div, aligned left */}
+         {/* Enhanced Status Indicator (Live or Recording Time) */}
          <div className="flex justify-start mb-3">
+             {/* Using Tailwind classes for background, color, shadow, and rounded corners */}
              <div className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
                 isLive ? "bg-red-600/80 text-white" : "bg-blue-600/80 text-white"
@@ -208,7 +214,7 @@ export default function CameraPlayerPage() {
              </div>
          </div>
 
-        {/* Video Player Area */}
+        {/* Enhanced Video Player Area */}
         <div className="relative aspect-video w-full max-w-5xl mx-auto bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-border/60">
             {/* Status Indicator Removed from here */}
 
@@ -227,7 +233,7 @@ export default function CameraPlayerPage() {
                  </div>
             )}
 
-            {/* Timestamp Search Loading Overlay */}
+            {/* Enhanced Timestamp Search Loading Overlay */}
             {showSearchLoadingOverlay && (
                  <div className="absolute inset-0 flex flex-col justify-center items-center text-white bg-black/80 z-10 backdrop-blur-md transition-opacity duration-300">
                     <LoadingSpinner size={48} className="text-white/90 animate-spin-slow" />
@@ -236,7 +242,7 @@ export default function CameraPlayerPage() {
             )}
         </div>
 
-         {/* "Go Live" Button (only shown when viewing a recording) */}
+         {/* Enhanced "Go Live" Button */}
          {!isLive && (
              <div className="flex justify-center mt-4">
                  <Button
@@ -251,11 +257,12 @@ export default function CameraPlayerPage() {
              </div>
          )}
 
-         {/* DateTimeSearch component */}
+         {/* Enhanced DateTimeSearch component styling */}
          <div className="flex justify-center px-2 mt-4">
             <DateTimeSearch
                 onSearch={handleSearch}
                 isLoading={isLoadingSearch}
+                // Added shadow, rounded corners, border, background blur, and transition
                 className="w-full max-w-xl shadow-xl rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm transition-all duration-300 ease-in-out"
             />
          </div>

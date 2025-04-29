@@ -77,7 +77,9 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
   };
 
   return (
+    // Enhanced styling: Card wrapper, shadow, border, background, overflow-hidden
     <Card className={cn("w-full shadow-md rounded-lg border border-border bg-card overflow-hidden", className)} {...props}>
+      {/* Enhanced Card Header with gradient and border */}
       <CardHeader className="pb-4 pt-5 bg-gradient-to-b from-muted/30 to-transparent border-b border-border/50">
         <CardTitle className="text-lg font-semibold text-primary text-center flex items-center justify-center gap-2">
           <Search className="h-5 w-5" /> Search Recording by Time Range
@@ -100,15 +102,16 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                       <Button
                           variant={"outline"}
                           className={cn(
-                              "w-full justify-start text-left font-normal rounded-lg border-input shadow-sm",
+                              "w-full justify-start text-left font-normal rounded-lg border-input shadow-sm", // Added rounded-lg, shadow
                               !startDate && "text-muted-foreground",
-                              "focus-visible:ring-primary/50 focus-visible:border-primary"
+                              "focus-visible:ring-primary/50 focus-visible:border-primary" // Focus styles
                           )}
                           id="start-date-picker"
                       >
                           {startDate ? format(startDate, "dd/MM/yyyy") : <span>Pick start date</span>} {/* Changed format */}
                       </Button>
                       </PopoverTrigger>
+                      {/* Enhanced Popover Content styling */}
                       <PopoverContent className="w-auto p-0 bg-popover border-border rounded-lg shadow-xl">
                       <Calendar
                           mode="single"
@@ -116,7 +119,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                           onSelect={setStartDate}
                           initialFocus
                           disabled={(d) => d > new Date() || d < new Date("2000-01-01")}
-                          className="bg-popover text-popover-foreground rounded-lg"
+                          className="bg-popover text-popover-foreground rounded-lg" // Ensure rounded corners
                        />
                       </PopoverContent>
                   </Popover>
@@ -132,7 +135,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                       type="time"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full rounded-lg border-input shadow-sm focus-visible:ring-primary/50 focus-visible:border-primary"
+                      className="w-full rounded-lg border-input shadow-sm focus-visible:ring-primary/50 focus-visible:border-primary" // Added rounded-lg, shadow, focus styles
                       aria-label="Start time for search"
                   />
               </div>
@@ -153,15 +156,16 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                       <Button
                           variant={"outline"}
                           className={cn(
-                              "w-full justify-start text-left font-normal rounded-lg border-input shadow-sm",
+                              "w-full justify-start text-left font-normal rounded-lg border-input shadow-sm", // Added rounded-lg, shadow
                               !endDate && "text-muted-foreground",
-                              "focus-visible:ring-primary/50 focus-visible:border-primary"
+                              "focus-visible:ring-primary/50 focus-visible:border-primary" // Focus styles
                           )}
                           id="end-date-picker"
                       >
                           {endDate ? format(endDate, "dd/MM/yyyy") : <span>Pick end date</span>} {/* Changed format */}
                       </Button>
                       </PopoverTrigger>
+                       {/* Enhanced Popover Content styling */}
                       <PopoverContent className="w-auto p-0 bg-popover border-border rounded-lg shadow-xl">
                       <Calendar
                           mode="single"
@@ -169,7 +173,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                           onSelect={setEndDate}
                           initialFocus
                           disabled={(d) => d > new Date() || d < new Date("2000-01-01") || (startDate && d < startDate) } // Disable past dates and dates before start date
-                          className="bg-popover text-popover-foreground rounded-lg"
+                          className="bg-popover text-popover-foreground rounded-lg" // Ensure rounded corners
                        />
                       </PopoverContent>
                   </Popover>
@@ -185,7 +189,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full rounded-lg border-input shadow-sm focus-visible:ring-primary/50 focus-visible:border-primary"
+                      className="w-full rounded-lg border-input shadow-sm focus-visible:ring-primary/50 focus-visible:border-primary" // Added rounded-lg, shadow, focus styles
                       aria-label="End time for search"
                   />
               </div>
@@ -193,7 +197,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
         </div>
 
 
-        {/* Search Button */}
+        {/* Enhanced Search Button styling */}
         <Button
           onClick={handleSearchClick}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg py-3 text-base font-semibold shadow-md transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"

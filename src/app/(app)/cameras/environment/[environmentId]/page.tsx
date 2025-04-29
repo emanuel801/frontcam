@@ -79,10 +79,10 @@ export default function EnvironmentCameraListPage() {
 
   return (
     <div className="space-y-8">
-         {/* Improved Header Section */}
+         {/* Improved Header Section with icon and border */}
          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-border pb-4">
-             <div className="flex items-center space-x-3">
-                <div className="p-3 rounded-lg bg-primary/10 text-primary border border-primary/20">
+             <div className="flex items-center space-x-4">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-md">
                     <Home className="h-8 w-8" />
                 </div>
                 <div>
@@ -103,7 +103,7 @@ export default function EnvironmentCameraListPage() {
            // Link to the Camera Player Page using the camera ID
           <Link href={`/cameras/${camera.id}`} key={camera.id} passHref legacyBehavior>
             <a className="group block">
-                {/* More pronounced shadow, subtle border, hover effect */}
+                {/* More pronounced shadow, subtle border, hover effect, added transform */}
                 <Card className="overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col bg-card border border-border/60 hover:border-primary/50 transform hover:-translate-y-1">
                 <CardHeader className="relative h-48 w-full p-0 bg-muted overflow-hidden">
                     <StreamPreviewImage
@@ -132,7 +132,7 @@ export default function EnvironmentCameraListPage() {
           </Link>
         ))}
       </div>
-        {/* Improved "No Cameras" message */}
+        {/* Improved "No Cameras" message with icon and dashed border */}
         {(!cameras || cameras.length === 0) && (
             <div className="text-center py-16 col-span-full bg-muted/50 rounded-lg border border-dashed border-border">
                 <Video className="h-16 w-16 text-muted-foreground mx-auto mb-5 opacity-60" />
