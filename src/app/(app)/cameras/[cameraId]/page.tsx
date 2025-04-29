@@ -190,14 +190,14 @@ export default function CameraPlayerPage() {
                 description: "Preview shown below. It will disappear shortly.",
              });
 
-             // Set timeout to hide the preview after 10 seconds
+             // Set timeout to hide the preview after 3 seconds
              snapshotTimeoutRef.current = setTimeout(() => {
                  setShowSnapshotPreview(false);
                  toast({
                      title: "Snapshot Preview Hidden",
                      description: "You can still download the snapshot.",
                  });
-             }, 10000); // 10 seconds
+             }, 3000); // 3 seconds
 
         } catch (error) {
              console.error('Error capturing snapshot:', error);
