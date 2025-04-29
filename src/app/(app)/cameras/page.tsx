@@ -53,7 +53,7 @@ export default function CameraListPage() {
                 <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col bg-card border border-border hover:border-primary">
                 <CardHeader className="relative h-40 w-full p-0"> {/* Slightly reduced height */}
                     <Image
-                    src={camera.imageUrl || 'https://picsum.photos/300/200'} // Adjusted placeholder size
+                    src={camera.imageUrl || `https://picsum.photos/300/200?random=${camera.id}`} // Adjusted placeholder size and URL
                     alt={camera.name}
                     layout="fill"
                     objectFit="cover"
