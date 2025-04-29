@@ -190,8 +190,8 @@ export default function CameraPlayerPage() {
             </div>
          </div>
 
-         {/* Status Indicator (Live or Recording Time) - Moved outside the player div */}
-         <div className="flex justify-center mb-3">
+         {/* Status Indicator (Live or Recording Time) - Moved outside the player div, aligned left */}
+         <div className="flex justify-start mb-3">
              <div className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
                 isLive ? "bg-red-600/80 text-white" : "bg-blue-600/80 text-white"
@@ -202,7 +202,7 @@ export default function CameraPlayerPage() {
                     </>
                 ) : (
                    <>
-                       <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'MMM d, HH:mm') : '...'}
+                       <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'dd/MM/yyyy HH:mm') : '...'} {/* Updated format */}
                    </>
                 )}
              </div>
