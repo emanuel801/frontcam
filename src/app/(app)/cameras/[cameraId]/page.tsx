@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider"; // Import Slider
 import { Card, CardContent } from '@/components/ui/card'; // Import Card
-import { formatTime } from '@/lib/utils'; // Utility to format time
+import { formatTime, cn } from '@/lib/utils'; // Utility to format time and cn function
 
 export default function CameraPlayerPage() {
   const params = useParams();
