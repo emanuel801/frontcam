@@ -9,28 +9,20 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Play, Pause, Settings, Radio } from 'lucide-react'; // Added Radio for Live indicator
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Slider } from "@/components/ui/slider";
-import { Card, CardContent } from '@/components/ui/card';
-import { formatTime, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge'; // Import Badge for Live indicator
+import { cn } from '@/lib/utils';
+
 
 export default function CameraPlayerPage() {
   const params = useParams();
   const cameraId = params.cameraId as string;
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const videoRef = useRef<HTMLVideoElement>(null); // Ref for the video element
-
-  // Video playback state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isSeeking, setIsSeeking] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null); // Ref for the video element (can still be useful)
 
   // Fetch camera data
   const { data: camera, isLoading: isLoadingCamera, isError: isErrorCamera, error: errorCamera, refetch: refetchCamera } = useQuery<Camera | undefined>({
@@ -51,72 +43,17 @@ export default function CameraPlayerPage() {
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
 
-   // Effect to set the initial stream URL and reset playback state
+   // Effect to set the initial stream URL
    useEffect(() => {
        if (camera?.streamUrl && !currentStreamUrl && !isLoadingSearch) {
            console.log("Setting initial live stream URL:", camera.streamUrl);
            setCurrentStreamUrl(camera.streamUrl);
-           // Reset playback state for new/initial stream
-           setIsPlaying(false);
-           setCurrentTime(0);
-           setDuration(0); // Initially assume live until metadata loads
        } else if (!camera && !isLoadingCamera) {
            setCurrentStreamUrl(null);
-           setIsPlaying(false);
-           setCurrentTime(0);
-           setDuration(0);
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [camera, isLoadingCamera]);
 
-   // Effect to add video event listeners
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const handlePlay = () => setIsPlaying(true);
-        const handlePause = () => setIsPlaying(false);
-        const handleTimeUpdate = () => {
-            if (!isSeeking) { // Only update if user isn't actively dragging the slider
-                 setCurrentTime(video.currentTime);
-            }
-        };
-        const handleLoadedMetadata = () => {
-            // Check if duration is finite (recording) or infinite (live)
-            const isLive = video.duration === Infinity;
-            console.log("Loaded metadata, duration:", video.duration, "Is live:", isLive);
-            setDuration(isLive ? 0 : video.duration);
-            setCurrentTime(0); // Reset time on new metadata
-        };
-         const handleEnded = () => {
-            setIsPlaying(false);
-            // Only set to duration if it's a recording
-            if(duration > 0) {
-                setCurrentTime(duration);
-            }
-        };
-
-        video.addEventListener('play', handlePlay);
-        video.addEventListener('pause', handlePause);
-        video.addEventListener('timeupdate', handleTimeUpdate);
-        video.addEventListener('loadedmetadata', handleLoadedMetadata);
-        video.addEventListener('ended', handleEnded);
-
-
-        // Initial sync in case state is already set (e.g., browser remembers)
-        setIsPlaying(!video.paused);
-        setCurrentTime(video.currentTime);
-        setDuration(video.duration === Infinity ? 0 : video.duration);
-
-
-        return () => {
-            video.removeEventListener('play', handlePlay);
-            video.removeEventListener('pause', handlePause);
-            video.removeEventListener('timeupdate', handleTimeUpdate);
-            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            video.removeEventListener('ended', handleEnded);
-        };
-    }, [duration, isSeeking]); // Rerun if duration changes or seeking state changes
 
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
 
@@ -126,10 +63,7 @@ export default function CameraPlayerPage() {
         if (!cameraId) throw new Error("Camera ID is missing");
         console.log(`Searching from ${startTimestamp} to ${endTimestamp} for camera ${cameraId}`);
         setIsLoadingSearch(true);
-        // Reset playback state before loading new stream
-        setIsPlaying(false);
-        setCurrentTime(0);
-        setDuration(0); // Assume new stream is live until metadata loads
+        // Reset playback state before loading new stream (browser will handle this)
         return getStreamUrlForTimestamp(cameraId, startTimestamp);
     },
     onSuccess: (newUrl) => {
@@ -141,7 +75,7 @@ export default function CameraPlayerPage() {
           description: "Loading video from the selected time.",
           className: "bg-green-100 border-green-300 text-green-800",
         });
-         // Attempt to play the new video automatically after a short delay
+         // Browser controls will handle play state
          setTimeout(() => {
             videoRef.current?.play().catch(err => console.warn("Autoplay after search prevented:", err));
         }, 500);
@@ -160,10 +94,7 @@ export default function CameraPlayerPage() {
          } else {
              setCurrentStreamUrl(null);
          }
-         // Reset playback state on error
-         setIsPlaying(false);
-         setCurrentTime(0);
-         setDuration(0); // Assume live
+         // Browser controls handle state
     },
   });
 
@@ -172,32 +103,6 @@ export default function CameraPlayerPage() {
     const endTimestampInSeconds = Math.floor(endDateTime.getTime() / 1000);
     searchTimestamp({ startTimestamp: startTimestampInSeconds, endTimestamp: endTimestampInSeconds });
   };
-
-  // Video control handlers
-    const handlePlayPause = () => {
-        const video = videoRef.current;
-        if (!video) return;
-        if (isPlaying) {
-        video.pause();
-        } else {
-        video.play().catch(err => {
-             console.error("Error playing video:", err);
-             toast({ title: "Playback Error", description: `Could not play video: ${err.message}`, variant: "destructive" });
-        });
-        }
-    };
-
-   const handleSliderChange = (value: number[]) => {
-        const newTime = value[0];
-        if (videoRef.current) {
-            videoRef.current.currentTime = newTime;
-            setCurrentTime(newTime); // Immediately update displayed time
-        }
-    };
-
-    // Handlers to track when user starts/stops dragging slider
-    const handleSliderPointerDown = () => setIsSeeking(true);
-    const handleSliderPointerUp = () => setIsSeeking(false);
 
 
   // --- Render Logic ---
@@ -237,8 +142,6 @@ export default function CameraPlayerPage() {
   }
 
   const showSearchLoadingOverlay = isLoadingSearch;
-  // Determine if the video is seekable (i.e., it's a recording with a known, positive duration)
-  const canSeek = duration > 0;
 
   return (
     <div className="space-y-6 pb-20"> {/* Adjusted spacing */}
@@ -265,7 +168,7 @@ export default function CameraPlayerPage() {
                     key={currentStreamUrl} // Force re-mount on URL change
                     src={currentStreamUrl}
                     videoRef={videoRef} // Pass the ref
-                    controls={false} // Disable default controls
+                    controls={true} // Use default browser controls
                  />
             ) : (
                  <div className="absolute inset-0 flex flex-col justify-center items-center text-muted-foreground bg-gradient-to-br from-muted/70 to-muted/80 backdrop-blur-sm">
@@ -283,67 +186,6 @@ export default function CameraPlayerPage() {
                 </div>
             )}
         </div>
-
-         {/* Custom Controls Card */}
-        {currentStreamUrl && (
-             <Card className="w-full max-w-5xl mx-auto shadow-lg rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm overflow-hidden">
-                <CardContent className="p-4 space-y-3">
-                    {/* Conditionally render progress bar ONLY if seekable (recording) */}
-                    {canSeek && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-mono text-muted-foreground w-12 text-center">
-                                {formatTime(currentTime)}
-                            </span>
-                            <Slider
-                                value={[currentTime]}
-                                max={duration}
-                                step={1}
-                                onValueChange={handleSliderChange}
-                                onPointerDown={handleSliderPointerDown} // Track seeking start
-                                onPointerUp={handleSliderPointerUp}     // Track seeking end
-                                disabled={isLoadingSearch} // Disable only during search loading (canSeek is already true here)
-                                className={cn("flex-1 cursor-pointer")}
-                                aria-label="Video progress"
-                            />
-                            <span className="text-xs font-mono text-muted-foreground w-12 text-center">
-                                {formatTime(duration)}
-                            </span>
-                        </div>
-                    )}
-                     {/* Show LIVE indicator if not seekable */}
-                     {!canSeek && (
-                         <div className="flex justify-center items-center">
-                            <Badge variant="destructive" className="flex items-center gap-1.5 bg-red-600 text-white animate-pulse">
-                                <Radio className="h-3 w-3"/> LIVE
-                            </Badge>
-                         </div>
-                     )}
-
-                    {/* Control Buttons */}
-                    <div className="flex justify-center items-center gap-4 pt-1">
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handlePlayPause}
-                            disabled={isLoadingSearch} // Disable during search loading
-                            className="rounded-full hover:bg-primary/10 text-primary w-12 h-12 transition-transform hover:scale-110"
-                            aria-label={isPlaying ? "Pause video" : "Play video"}
-                        >
-                            {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                         </Button>
-                          <Button
-                             variant="ghost"
-                             size="icon"
-                             className="text-muted-foreground hover:text-primary rounded-full"
-                             aria-label="Video settings"
-                             disabled // Placeholder
-                          >
-                             <Settings className="h-5 w-5" />
-                         </Button>
-                    </div>
-                </CardContent>
-             </Card>
-        )}
 
 
          {/* DateTimeSearch component */}

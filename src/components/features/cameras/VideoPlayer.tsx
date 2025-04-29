@@ -10,16 +10,19 @@ import { cn } from '@/lib/utils';
 interface VideoPlayerProps {
   src: string | null; // Allow null src for initial state
   videoRef?: React.RefObject<HTMLVideoElement>; // Optional external ref
-  controls?: boolean; // Option to disable default controls
+  controls?: boolean; // Option to enable/disable default controls
 }
+
+// Simplified state as browser controls handle play/pause/loading UI
+type PlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, controls = true }) => {
   const internalRef = useRef<HTMLVideoElement>(null);
   const videoRef = externalRef || internalRef; // Use external ref if provided
   const hlsRef = useRef<Hls | null>(null);
-  const [playerState, setPlayerState] = useState<'idle' | 'loading' | 'playing' | 'paused' | 'error'>('idle');
+  const [status, setStatus] = useState<PlayerStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isUserInteracted, setIsUserInteracted] = useState(false);
+  // No need for isUserInteracted if using default controls primarily
 
   const cleanupHls = () => {
       if (hlsRef.current) {
@@ -40,11 +43,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       cleanupHls();
 
       console.log("Initializing HLS for:", streamSrc);
-      setPlayerState('loading');
+      setStatus('loading');
       setErrorMessage(null);
-      setIsUserInteracted(false); // Reset interaction for new source
 
       const hls = new Hls({
+          // Configuration remains the same
           startPosition: -1,
           maxBufferLength: 30,
           maxMaxBufferLength: 600,
@@ -70,28 +73,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       });
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-          console.log("Manifest parsed, attempting play...");
-          // Attempt to play only if controls are enabled OR user has interacted before
-          // If using custom controls, parent component handles play attempt
-          if (controls || isUserInteracted) {
-              videoElement.play().catch(error => {
-                  console.warn("Autoplay was prevented:", error.name);
-                  if (!isUserInteracted) { // Only show prompt if it wasn't a user click
-                      setPlayerState('paused');
-                      setErrorMessage("Tap video to play.");
-                  }
-              });
-          } else {
-             // If no controls and no interaction, set to paused, waiting for external trigger
-             setPlayerState('paused');
-          }
-      });
-
-      hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
-          console.log(`Level ${data.level} loaded. Bitrate: ${hls.levels[data.level].bitrate}`);
-          if (playerState === 'loading') {
-            console.log("Level loaded, waiting for playback events...");
-          }
+          console.log("Manifest parsed, HLS ready.");
+          setStatus('ready');
+          // No need to explicitly call play() here, browser controls handle it.
       });
 
        hls.on(Hls.Events.ERROR, (event, data) => {
@@ -99,6 +83,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
            if (data.fatal) {
                 console.error("HLS Fatal error encountered.");
                 let userMessage = `Stream error (${data.details}).`;
+                 // Same error mapping logic
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         userMessage = `Network error (${data.details}). Check connection.`;
@@ -106,35 +91,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         if (data.details === 'bufferStalledError' || data.details === 'bufferSeekOverHole') {
                             userMessage = "Stream interrupted. Trying to recover.";
-                            hls.recoverMediaError();
+                            hls.recoverMediaError(); // Attempt recovery
                         } else if (data.details === 'fragParsingError') {
                             userMessage = "Video data corrupted. Trying to skip.";
                             hls.swapAudioCodec();
-                            hls.recoverMediaError();
+                            hls.recoverMediaError(); // Attempt recovery
                         } else {
                             userMessage = `Media playback error (${data.details}).`;
                         }
                         break;
-                    case Hls.ErrorTypes.MANIFEST_LOAD_ERROR:
+                     case Hls.ErrorTypes.MANIFEST_LOAD_ERROR:
                     case Hls.ErrorTypes.LEVEL_LOAD_ERROR:
                     case Hls.ErrorTypes.MANIFEST_PARSING_ERROR:
                          userMessage = `Could not load video data (${data.details}).`;
-                         cleanupHls();
+                         cleanupHls(); // Clean up on manifest/level load errors
                          break;
                     default:
                          userMessage = `Unrecoverable stream error (${data.details}).`;
-                         cleanupHls();
+                         cleanupHls(); // Clean up on other fatal errors
                          break;
                 }
                 setErrorMessage(userMessage);
-                setPlayerState('error');
+                setStatus('error');
            } else {
                 console.warn(`HLS Non-fatal error: Type=${data.type}, Details=${data.details}`);
-                 if(data.details === 'fragLoadTimeOut' && playerState !== 'error') {
-                     console.warn("Fragment load timeout, retrying...");
-                     if (playerState === 'playing' || playerState === 'paused') {
-                         setPlayerState('loading');
-                     }
+                // If still loading, keep loading state, otherwise could indicate buffering
+                 if(data.details === 'fragLoadTimeOut' && status !== 'error' && status !== 'loading') {
+                     console.warn("Fragment load timeout, might cause buffering...");
+                     // Don't necessarily set to loading, video element events handle buffering state
                  }
            }
        });
@@ -146,88 +130,63 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    // --- Video Element Event Listeners (Internal State Sync) ---
-    // These listeners sync the internal player state for UI overlays,
-    // independent of whether default controls are shown or custom ones are used.
-    const handlePlay = () => {
-        console.log("Internal Video event: play");
-        setPlayerState('playing');
-        setErrorMessage(null); // Clear error messages on successful play
-        //setIsUserInteracted(true); // Set interaction on play/pause click instead
-    };
-    const handlePause = () => {
-        console.log("Internal Video event: pause");
-        if (playerState !== 'error') setPlayerState('paused');
-        //setIsUserInteracted(true);
-    };
-     const handleWaiting = () => {
-        console.log("Internal Video event: waiting (buffering)");
-        if (playerState !== 'error') setPlayerState('loading');
-    };
-     const handlePlaying = () => {
-        console.log("Internal Video event: playing (resumed)");
-        if (playerState !== 'error') {
-            setPlayerState('playing');
-            setErrorMessage(null); // Clear temporary messages
-        }
-    };
+    // --- Video Element Event Listeners (For Status & Error Handling) ---
+    // Listen for native video errors
      const handleError = (e: Event) => {
         const error = videoElement.error;
         console.error('Native video element error:', `Code: ${error?.code}, Message: ${error?.message}`, e);
-        if (playerState !== 'error') { // Don't override existing HLS error
-            setPlayerState('error');
+        if (status !== 'error') { // Don't override existing HLS error
+            setStatus('error');
             setErrorMessage(`Video playback error (Code: ${error?.code}).`);
         }
      };
-      const handleEnded = () => {
-        console.log("Internal Video event: ended");
-        setPlayerState('paused');
-        // setIsUserInteracted(false); // Keep interaction state?
-    };
+     // Update status when video can play
+     const handleCanPlay = () => {
+         if (status === 'loading') {
+             console.log("Video can play.");
+             setStatus('ready'); // Mark as ready, browser controls take over
+         }
+     };
+       const handleWaiting = () => {
+          // You could use this to show a custom buffering indicator if needed
+          console.log("Video waiting (buffering)...");
+          if (status === 'ready' || status === 'idle') { // Only show loading if it was ready or idle before
+             setStatus('loading');
+          }
+      };
+      const handlePlaying = () => {
+          // Reset loading state if it was buffering
+          if (status === 'loading') {
+            setStatus('ready');
+          }
+      };
 
-    videoElement.addEventListener('play', handlePlay);
-    videoElement.addEventListener('pause', handlePause);
+
+    videoElement.addEventListener('error', handleError);
+    videoElement.addEventListener('canplay', handleCanPlay);
     videoElement.addEventListener('waiting', handleWaiting);
     videoElement.addEventListener('playing', handlePlaying);
-    videoElement.addEventListener('error', handleError);
-    videoElement.addEventListener('ended', handleEnded);
 
 
     // --- Initialization ---
     if (src) {
+        setStatus('loading'); // Set initial loading state
         if (Hls.isSupported()) {
           initializeHls(videoElement, src);
         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
           console.log("Native HLS supported, using video.src");
           cleanupHls();
-          setPlayerState('loading');
           videoElement.src = src;
-          videoElement.load();
-           const nativePlay = () => {
-             // Only try to play if using default controls or interaction happened
-             if (controls || isUserInteracted) {
-                 videoElement.play().catch(error => {
-                     console.warn("Native Autoplay prevented:", error.name);
-                     if (!isUserInteracted) { // Only show prompt if it wasn't a user click
-                         setPlayerState('paused');
-                         setErrorMessage("Tap video to play.");
-                     }
-                 });
-             } else {
-                 setPlayerState('paused'); // Wait for external trigger
-             }
-              // Remove listener regardless of play success/failure
-              videoElement.removeEventListener('loadedmetadata', nativePlay);
-           }
-            videoElement.addEventListener('loadedmetadata', nativePlay);
+          videoElement.load(); // Trigger loading
+          // No need to add loadedmetadata listener for play if using default controls
         } else {
           console.error("HLS is not supported in this browser.");
-          setPlayerState('error');
+          setStatus('error');
           setErrorMessage("Video format not supported.");
         }
     } else {
         cleanupHls();
-        setPlayerState('idle');
+        setStatus('idle');
         setErrorMessage(null);
     }
 
@@ -236,33 +195,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
         console.log("Running cleanup for VideoPlayer useEffect, src:", src);
         cleanupHls();
         if (videoElement) {
-            videoElement.removeEventListener('play', handlePlay);
-            videoElement.removeEventListener('pause', handlePause);
-            videoElement.removeEventListener('waiting', handleWaiting);
-            videoElement.removeEventListener('playing', handlePlaying);
             videoElement.removeEventListener('error', handleError);
-            videoElement.removeEventListener('ended', handleEnded);
-            // Avoid removing loadedmetadata conditionally, ensure it's removed if added
-             // videoElement.removeEventListener('loadedmetadata', nativePlay); // This is tricky, listener might not be set
+            videoElement.removeEventListener('canplay', handleCanPlay);
+            videoElement.removeEventListener('waiting', handleWaiting);
+             videoElement.removeEventListener('playing', handlePlaying);
         }
-        setPlayerState('idle'); // Reset state on cleanup
+        setStatus('idle'); // Reset state on cleanup
     };
-    // Add `controls` to dependency array if its change should re-trigger effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, videoRef]); // Rerun if src or ref changes
 
-  const handleManualPlay = () => {
-        if (videoRef.current && (playerState === 'paused' || playerState === 'idle')) {
-            console.log("Manual play triggered");
-            setIsUserInteracted(true); // Mark interaction
-            setPlayerState('loading');
-            videoRef.current.play().catch(e => {
-                console.error("Manual play failed:", e);
-                 setPlayerState('error');
-                 setErrorMessage(`Could not start playback: ${e.message}`);
-            });
-        }
-    };
 
   return (
     <div className="w-full h-full relative bg-black flex items-center justify-center text-white overflow-hidden rounded-lg">
@@ -271,18 +213,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             controls={controls} // Use prop to control visibility of default controls
             className={cn(
                 "w-full h-full object-contain",
-                // Only dim if overlays are shown and video isn't playing
-                 (playerState === 'loading' || playerState === 'error' || (playerState === 'paused' && controls) || (playerState === 'idle' && src && controls)) && "opacity-80"
+                 // Dim video slightly if loading or error to make overlay more visible
+                 (status === 'loading' || status === 'error') && "opacity-80"
             )}
             aria-label="Camera Stream Player"
             playsInline
-            // Muted state might be controlled by the parent if using custom controls
-            muted={!isUserInteracted && !controls} // Start muted if no controls or no interaction yet
-            // autoPlay // Handled in useEffect
+            muted={false} // Default controls usually handle mute state, start unmuted generally
+            // autoPlay // Handled by browser/user interaction with controls
         />
 
-        {/* Loading Overlay */}
-         {playerState === 'loading' && (
+        {/* Loading Overlay - Show only during initial load or buffering */}
+         {status === 'loading' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 pointer-events-none backdrop-blur-sm z-10">
                 <LoadingSpinner size={40} className="text-white/80" />
                 <p className="mt-3 text-sm font-medium text-white/80 animate-pulse">Loading stream...</p>
@@ -290,7 +231,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
         )}
 
         {/* Error Overlay */}
-         {playerState === 'error' && (
+         {status === 'error' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-destructive/80 to-destructive/95 p-5 text-center pointer-events-none backdrop-blur-sm z-10">
                  <AlertCircle size={48} className="text-destructive-foreground mb-3 drop-shadow-md" />
                  <p className="text-lg font-semibold text-destructive-foreground">Playback Error</p>
@@ -298,23 +239,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             </div>
         )}
 
-         {/* Paused/Idle Overlay (Prompt to Play) - Only show if default controls are enabled */}
-        {(playerState === 'paused' || (playerState === 'idle' && src)) && controls && (
-            <button
-                 className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center cursor-pointer group backdrop-blur-sm z-10 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-black rounded-lg"
-                 onClick={handleManualPlay}
-                 aria-label={playerState === 'paused' ? "Resume video" : "Play video"}
-                >
-                 <PlayCircle size={72} className="text-white/80 mb-3 transition-transform duration-300 group-hover:scale-110 drop-shadow-lg" strokeWidth={1.5}/>
-                 <p className="text-base font-medium text-white/90">
-                     {playerState === 'paused' ? (errorMessage || "Paused") : (errorMessage || "Tap to Play")}
-                </p>
-                 {playerState === 'idle' && !errorMessage && <p className="text-xs text-white/60 mt-1">Stream is ready</p>}
-            </button>
-        )}
+        {/* No need for Paused/Idle overlay if using default controls */}
 
         {/* Initial Idle State (No Source) */}
-        {playerState === 'idle' && !src && (
+        {status === 'idle' && !src && (
              <div className="absolute inset-0 flex flex-col justify-center items-center text-muted-foreground bg-gradient-to-br from-muted/50 to-muted/60 backdrop-blur-sm pointer-events-none z-10">
                  <WifiOff size={56} className="mb-3 text-muted-foreground/60 opacity-70"/>
                  <p className="text-lg font-medium">Stream Unavailable</p>
