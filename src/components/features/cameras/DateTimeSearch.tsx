@@ -106,7 +106,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                           )}
                           id="start-date-picker"
                       >
-                          {startDate ? format(startDate, "PPP") : <span>Pick start date</span>}
+                          {startDate ? format(startDate, "dd/MM/yyyy") : <span>Pick start date</span>} {/* Changed format */}
                       </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 bg-popover border-border rounded-lg shadow-xl">
@@ -159,7 +159,7 @@ const DateTimeSearch: React.FC<DateTimeSearchProps> = ({ onSearch, isLoading, cl
                           )}
                           id="end-date-picker"
                       >
-                          {endDate ? format(endDate, "PPP") : <span>Pick end date</span>}
+                          {endDate ? format(endDate, "dd/MM/yyyy") : <span>Pick end date</span>} {/* Changed format */}
                       </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 bg-popover border-border rounded-lg shadow-xl">
