@@ -9,20 +9,20 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw } from 'lucide-react';
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower } from 'lucide-react'; // Added Clock, RadioTower
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-
+import { format } from 'date-fns'; // To display timestamp
 
 export default function CameraPlayerPage() {
   const params = useParams();
   const cameraId = params.cameraId as string;
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const videoRef = useRef<HTMLVideoElement>(null); // Ref for the video element (can still be useful)
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Fetch camera data
   const { data: camera, isLoading: isLoadingCamera, isError: isErrorCamera, error: errorCamera, refetch: refetchCamera } = useQuery<Camera | undefined>({
@@ -42,12 +42,14 @@ export default function CameraPlayerPage() {
 
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
+  const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track if we are viewing a recording
 
-   // Effect to set the initial stream URL
+   // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
-       if (camera?.streamUrl && !currentStreamUrl && !isLoadingSearch) {
+       if (camera?.streamUrl && !currentStreamUrl && !searchedTimestamp && !isLoadingSearch) {
            console.log("Setting initial live stream URL:", camera.streamUrl);
            setCurrentStreamUrl(camera.streamUrl);
+           setSearchedTimestamp(null); // Ensure we are in live mode
        } else if (!camera && !isLoadingCamera) {
            setCurrentStreamUrl(null);
        }
@@ -58,21 +60,24 @@ export default function CameraPlayerPage() {
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
 
   // Mutation for timestamp search
-  const { mutate: searchTimestamp } = useMutation({
-    mutationFn: async ({ startTimestamp, endTimestamp }: { startTimestamp: number, endTimestamp: number }) => {
+  const { mutate: searchTimestampMutation } = useMutation({
+    mutationFn: async ({ timestamp }: { timestamp: number }) => { // Updated signature
         if (!cameraId) throw new Error("Camera ID is missing");
-        console.log(`Searching from ${startTimestamp} to ${endTimestamp} for camera ${cameraId}`);
+        console.log(`Searching for timestamp ${timestamp} for camera ${cameraId}`);
         setIsLoadingSearch(true);
         // Reset playback state before loading new stream (browser will handle this)
-        return getStreamUrlForTimestamp(cameraId, startTimestamp);
+        return getStreamUrlForTimestamp(cameraId, timestamp);
     },
-    onSuccess: (newUrl) => {
+    onSuccess: (newUrl, variables) => {
         console.log("Timestamp search successful, new URL:", newUrl);
         setCurrentStreamUrl(newUrl);
+        // Convert seconds back to Date object for display
+        const timestampDate = new Date(variables.timestamp * 1000);
+        setSearchedTimestamp(timestampDate);
         setIsLoadingSearch(false);
         toast({
           title: "Recording Found",
-          description: "Loading video from the selected time.",
+          description: `Loading video from ${format(timestampDate, 'PPpp')}.`,
           className: "bg-green-100 border-green-300 text-green-800",
         });
          // Browser controls will handle play state
@@ -88,9 +93,11 @@ export default function CameraPlayerPage() {
             variant: "destructive",
          });
          setIsLoadingSearch(false);
+         // Revert to live feed
          if (camera?.streamUrl) {
              console.log("Search failed, reverting to live stream URL:", camera.streamUrl);
              setCurrentStreamUrl(camera.streamUrl);
+             setSearchedTimestamp(null); // Back to live mode
          } else {
              setCurrentStreamUrl(null);
          }
@@ -98,11 +105,27 @@ export default function CameraPlayerPage() {
     },
   });
 
-  const handleSearch = (startDateTime: Date, endDateTime: Date) => {
-    const startTimestampInSeconds = Math.floor(startDateTime.getTime() / 1000);
-    const endTimestampInSeconds = Math.floor(endDateTime.getTime() / 1000);
-    searchTimestamp({ startTimestamp: startTimestampInSeconds, endTimestamp: endTimestampInSeconds });
+  // Updated handleSearch to accept single dateTime
+  const handleSearch = (dateTime: Date) => {
+    const timestampInSeconds = Math.floor(dateTime.getTime() / 1000);
+    searchTimestampMutation({ timestamp: timestampInSeconds });
   };
+
+   const switchToLive = () => {
+      if (camera?.streamUrl) {
+          console.log("Switching back to live stream.");
+          setCurrentStreamUrl(camera.streamUrl);
+          setSearchedTimestamp(null);
+          toast({
+              title: "Live Feed",
+              description: "Switched back to the live camera feed.",
+          });
+           // Let browser controls manage play state
+           setTimeout(() => {
+                videoRef.current?.play().catch(err => console.warn("Autoplay after switch to live prevented:", err));
+           }, 500);
+      }
+   };
 
 
   // --- Render Logic ---
@@ -142,6 +165,7 @@ export default function CameraPlayerPage() {
   }
 
   const showSearchLoadingOverlay = isLoadingSearch;
+  const isLive = !searchedTimestamp; // Determine if currently viewing live feed
 
   return (
     <div className="space-y-6 pb-20"> {/* Adjusted spacing */}
@@ -163,6 +187,22 @@ export default function CameraPlayerPage() {
 
         {/* Video Player Area */}
         <div className="relative aspect-video w-full max-w-5xl mx-auto bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-border/60">
+             {/* Status Indicator (Live or Recording Time) */}
+             <div className={cn(
+                "absolute top-3 left-3 z-20 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
+                isLive ? "bg-red-600/80 text-white" : "bg-blue-600/80 text-white"
+             )}>
+                {isLive ? (
+                    <>
+                       <RadioTower className="h-3.5 w-3.5 animate-pulse" /> LIVE
+                    </>
+                ) : (
+                   <>
+                       <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'MMM d, HH:mm') : '...'}
+                   </>
+                )}
+             </div>
+
             {currentStreamUrl ? (
                  <VideoPlayer
                     key={currentStreamUrl} // Force re-mount on URL change
@@ -187,9 +227,23 @@ export default function CameraPlayerPage() {
             )}
         </div>
 
+         {/* "Go Live" Button (only shown when viewing a recording) */}
+         {!isLive && (
+             <div className="flex justify-center mt-4">
+                 <Button
+                     onClick={switchToLive}
+                     variant="outline"
+                     size="sm"
+                     className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-primary/10 border-primary/50 text-primary flex items-center gap-1.5"
+                     disabled={isLoadingSearch}
+                 >
+                     <RadioTower className="h-4 w-4" /> Go Live
+                 </Button>
+             </div>
+         )}
 
          {/* DateTimeSearch component */}
-         <div className="flex justify-center px-2">
+         <div className="flex justify-center px-2 mt-4">
             <DateTimeSearch
                 onSearch={handleSearch}
                 isLoading={isLoadingSearch}
