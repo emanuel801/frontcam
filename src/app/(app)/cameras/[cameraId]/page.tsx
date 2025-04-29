@@ -9,7 +9,7 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download } from 'lucide-react'; // Added CameraIcon, Download
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download, CircleDot, StopCircle } from 'lucide-react'; // Added CircleDot, StopCircle
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ export default function CameraPlayerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null); // Ref for snapshot canvas
   const snapshotTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for snapshot preview timeout
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null); // Ref for MediaRecorder instance
+  const recordedChunksRef = useRef<Blob[]>([]); // Ref for recorded video chunks
 
   // Fetch camera data
   const { data: camera, isLoading: isLoadingCamera, isError: isErrorCamera, error: errorCamera, refetch: refetchCamera } = useQuery<Camera | undefined>({
@@ -48,6 +50,8 @@ export default function CameraPlayerPage() {
   const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null); // State for captured snapshot
   const [showSnapshotPreview, setShowSnapshotPreview] = useState<boolean>(false); // State to control preview visibility
+  const [isRecording, setIsRecording] = useState<boolean>(false); // State for recording status
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null); // State for the recorded video blob URL
 
    // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
@@ -61,14 +65,22 @@ export default function CameraPlayerPage() {
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [camera, isLoadingCamera]);
 
-    // Cleanup snapshot timeout on unmount
+    // Cleanup snapshot timeout and recorder on unmount
     useEffect(() => {
         return () => {
             if (snapshotTimeoutRef.current) {
                 clearTimeout(snapshotTimeoutRef.current);
             }
+             // Stop recording and clean up if component unmounts while recording
+             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+             }
+             if (recordedVideoUrl) {
+                 URL.revokeObjectURL(recordedVideoUrl); // Clean up blob URL
+             }
         };
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recordedVideoUrl]);
 
 
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
@@ -92,6 +104,7 @@ export default function CameraPlayerPage() {
         setShowSnapshotPreview(false); // Hide previous snapshot preview
         if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear existing timeout
         setIsLoadingSearch(false);
+        setRecordedVideoUrl(null); // Clear previous recording
         toast({
           title: "Recording Found",
           description: `Loading video starting from ${format(variables.startDateTime, 'PPpp')}.`,
@@ -118,6 +131,7 @@ export default function CameraPlayerPage() {
              setSnapshotUrl(null); // Clear snapshot
              setShowSnapshotPreview(false);
              if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
+             setRecordedVideoUrl(null); // Clear recording
          } else {
              setCurrentStreamUrl(null);
          }
@@ -138,6 +152,7 @@ export default function CameraPlayerPage() {
           setSnapshotUrl(null); // Clear snapshot
           setShowSnapshotPreview(false); // Hide snapshot preview
           if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear timeout
+          setRecordedVideoUrl(null); // Clear recording
           toast({
               title: "Live Feed",
               description: "Switched back to the live camera feed.",
@@ -196,6 +211,7 @@ export default function CameraPlayerPage() {
                  toast({
                      title: "Snapshot Preview Hidden",
                      description: "You can still download the snapshot.",
+                     duration: 2000, // Shorter duration for this notice
                  });
              }, 3000); // 3 seconds
 
@@ -218,6 +234,124 @@ export default function CameraPlayerPage() {
         link.href = snapshotUrl;
         const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
         link.download = `snapshot_${camera?.name.replace(/\s+/g, '_') || cameraId}_${timestamp}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // --- Recording Logic ---
+
+    const handleStartRecording = () => {
+        if (!videoRef.current) {
+             toast({ title: "Error", description: "Video element not available.", variant: "destructive" });
+             return;
+        }
+         // Check for MediaRecorder support
+         if (!window.MediaRecorder) {
+             toast({ title: "Unsupported Browser", description: "Video recording is not supported in your browser.", variant: "destructive" });
+             return;
+         }
+
+         // Important: Get stream from video element's srcObject.
+         // This might be null or not a MediaStream if using HLS or similar tech.
+         const stream = (videoRef.current.captureStream && videoRef.current.captureStream()) || videoRef.current.srcObject;
+
+         if (!stream || !(stream instanceof MediaStream)) {
+            toast({
+                title: "Recording Error",
+                description: "Cannot access the video stream for recording. This might be due to the stream type (e.g., HLS).",
+                variant: "destructive",
+                duration: 5000,
+            });
+            console.error("Failed to get MediaStream from video element:", videoRef.current.srcObject);
+            return;
+         }
+
+
+        // Determine available MIME type
+        const options = { mimeType: 'video/webm; codecs=vp9' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            console.warn(`${options.mimeType} is not Supported, trying vp8`);
+            options.mimeType = 'video/webm; codecs=vp8';
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                console.warn(`${options.mimeType} is not Supported, trying default`);
+                options.mimeType = 'video/webm';
+                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    console.warn(`${options.mimeType} is not Supported`);
+                     toast({ title: "Recording Error", description: "No supported video format found for recording.", variant: "destructive" });
+                     return;
+                 }
+            }
+        }
+
+        try {
+             // Clean up previous recording if any
+             if (recordedVideoUrl) {
+                 URL.revokeObjectURL(recordedVideoUrl);
+                 setRecordedVideoUrl(null);
+             }
+             recordedChunksRef.current = []; // Clear previous chunks
+
+            const recorder = new MediaRecorder(stream, options);
+            mediaRecorderRef.current = recorder;
+
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunksRef.current.push(event.data);
+                    console.log("Recording chunk received:", event.data.size);
+                }
+            };
+
+            recorder.onstop = () => {
+                console.log("Recording stopped. Chunks:", recordedChunksRef.current.length);
+                if (recordedChunksRef.current.length > 0) {
+                    const blob = new Blob(recordedChunksRef.current, { type: options.mimeType });
+                    const url = URL.createObjectURL(blob);
+                    setRecordedVideoUrl(url);
+                     toast({ title: "Recording Complete", description: "Recording finished. Ready for download." });
+                } else {
+                     toast({ title: "Recording Issue", description: "No video data was recorded.", variant: "destructive" });
+                }
+                setIsRecording(false);
+                mediaRecorderRef.current = null; // Clear the ref
+                recordedChunksRef.current = []; // Clear chunks after processing
+                 // Detach stream capture if needed (or let browser handle it)
+                 // stream.getTracks().forEach(track => track.stop()); // Stop tracks if captureStream was used
+            };
+
+             recorder.onerror = (event) => {
+                console.error("MediaRecorder Error:", event);
+                toast({ title: "Recording Error", description: `An error occurred during recording.`, variant: "destructive" });
+                setIsRecording(false);
+                mediaRecorderRef.current = null;
+                recordedChunksRef.current = [];
+            };
+
+            recorder.start();
+            setIsRecording(true);
+            toast({ title: "Recording Started", description: "Video recording is in progress..." });
+
+        } catch (error) {
+            console.error('Error starting recording:', error);
+             toast({ title: "Recording Error", description: `Could not start recording: ${(error as Error).message}`, variant: "destructive" });
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+            // State update (setIsRecording(false)) and further actions happen in recorder.onstop
+        } else {
+             toast({ title: "Info", description: "Recording is not currently active." });
+        }
+    };
+
+    const handleDownloadRecording = () => {
+        if (!recordedVideoUrl) return;
+        const link = document.createElement('a');
+        link.href = recordedVideoUrl;
+        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+        link.download = `recording_${camera?.name.replace(/\s+/g, '_') || cameraId}_${timestamp}.webm`; // Save as webm
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -265,6 +399,8 @@ export default function CameraPlayerPage() {
 
   const showSearchLoadingOverlay = isLoadingSearch;
   const isLive = !searchedTimestamp; // Determine if currently viewing live feed
+  const canRecord = typeof window !== 'undefined' && !!window.MediaRecorder && !!videoRef.current?.captureStream; // Check if recording is generally possible
+
 
   return (
     <div className="space-y-6 pb-20"> {/* Adjusted spacing */}
@@ -334,15 +470,15 @@ export default function CameraPlayerPage() {
         {/* Hidden canvas for snapshot */}
         <canvas ref={canvasRef} className="hidden"></canvas>
 
-         {/* Control Buttons Area (Go Live, Capture Snapshot) */}
-         <div className="flex justify-center items-center gap-4 mt-4">
+         {/* Control Buttons Area (Go Live, Capture Snapshot, Recording Controls) */}
+         <div className="flex flex-wrap justify-center items-center gap-4 mt-4">
              {!isLive && (
                  <Button
                      onClick={switchToLive}
                      variant="outline"
                      size="sm"
                      className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-primary/10 border-primary/50 text-primary flex items-center gap-1.5"
-                     disabled={isLoadingSearch}
+                     disabled={isLoadingSearch || isRecording} // Disable if searching or recording
                  >
                      <RadioTower className="h-4 w-4" /> Go Live
                  </Button>
@@ -367,6 +503,48 @@ export default function CameraPlayerPage() {
                        <Download className="h-4 w-4"/> Download Snapshot
                    </Button>
                )}
+
+               {/* Recording Controls */}
+               {canRecord && currentStreamUrl && ( // Show only if recording is possible and stream is active
+                   <>
+                       {!isRecording ? (
+                           <Button
+                               onClick={handleStartRecording}
+                               variant="destructive"
+                               size="sm"
+                               className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-destructive/90 flex items-center gap-1.5"
+                               disabled={isLoadingSearch} // Disable if searching
+                           >
+                               <CircleDot className="h-4 w-4 animate-pulse" /> Start Recording
+                           </Button>
+                       ) : (
+                           <Button
+                               onClick={handleStopRecording}
+                               variant="outline"
+                               size="sm"
+                               className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-muted/80 border-destructive/50 text-destructive flex items-center gap-1.5"
+                           >
+                               <StopCircle className="h-4 w-4" /> Stop Recording
+                           </Button>
+                       )}
+                       {/* Download Recording Button */}
+                       {recordedVideoUrl && !isRecording && (
+                           <Button
+                               onClick={handleDownloadRecording}
+                               variant="link"
+                               className="text-accent flex items-center gap-1.5"
+                               size="sm"
+                           >
+                               <Download className="h-4 w-4"/> Download Recording
+                           </Button>
+                       )}
+                   </>
+               )}
+                {!canRecord && currentStreamUrl && (
+                     <p className="text-xs text-muted-foreground italic w-full text-center">
+                         (Video recording not supported in this browser or for this stream type)
+                     </p>
+                )}
          </div>
 
          {/* Snapshot Preview Area (Conditional Render based on showSnapshotPreview) */}
@@ -383,16 +561,7 @@ export default function CameraPlayerPage() {
                         unoptimized // Data URLs don't need optimization
                     />
                 </div>
-                 {/* Optional: Keep download button here too if desired when preview is visible */}
-                 {/*
-                 <Button
-                    onClick={handleDownloadSnapshot}
-                    variant="link"
-                    className="mt-3 text-accent flex items-center gap-1.5"
-                 >
-                    <Download className="h-4 w-4"/> Download Snapshot
-                 </Button>
-                 */}
+                 {/* Keep download button visible even when preview is hidden */}
             </div>
          )}
 
@@ -409,4 +578,5 @@ export default function CameraPlayerPage() {
     </div>
   );
 }
+
 

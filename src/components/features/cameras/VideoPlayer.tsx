@@ -37,6 +37,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
           videoRef.current.pause();
           videoRef.current.removeAttribute('src');
            try { videoRef.current.load(); } catch (e) { console.warn("Error calling load() during cleanup:", e); }
+           // Try to stop tracks associated with captureStream if they exist
+           const stream = (videoRef.current as any).capturedStream; // Access potentially captured stream
+           if (stream && stream.getTracks) {
+             stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+             console.log("Stopped tracks from captured stream during cleanup.");
+           }
+           (videoRef.current as any).capturedStream = null; // Clear reference
       }
   };
 
@@ -77,6 +84,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
           setStatus('ready');
           if (autoPlay) {
              videoElement.play().catch(err => console.warn("Autoplay prevented:", err));
+          }
+           // Try enabling captureStream after HLS is ready and potentially playing
+           if (videoElement.captureStream) {
+            try {
+              const capture = videoElement.captureStream();
+              (videoElement as any).capturedStream = capture; // Store stream reference if needed later
+              console.log("captureStream() enabled successfully after HLS ready.");
+            } catch (e) {
+              console.error("Failed to enable captureStream after HLS ready:", e);
+            }
           }
       });
 
@@ -161,11 +178,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
                  videoElement.play().catch(err => console.warn("Autoplay after canplay prevented:", err));
              }
          }
+         // Try enabling captureStream when video is playable
+         if (videoElement.captureStream) {
+           try {
+             const stream = videoElement.captureStream();
+             (videoElement as any).capturedStream = stream; // Store stream reference if needed later
+             console.log("captureStream() enabled successfully.");
+           } catch (e) {
+             console.error("Failed to enable captureStream on canplay:", e);
+           }
+         } else {
+            console.warn("video.captureStream() not available.");
+         }
      };
        const handleWaiting = () => {
           console.log("Video waiting (buffering)...");
           if (status === 'ready' || status === 'idle') {
-             setStatus('loading'); // Set status for internal logic, but don't show overlay
+             // Temporarily removed setting status to loading here to avoid flicker
+             // setStatus('loading');
           }
       };
       const handlePlaying = () => {
@@ -182,15 +212,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
 
 
     if (src) {
-        setStatus('loading');
+        // setStatus('loading'); // Moved status setting inside initializeHls
         if (Hls.isSupported()) {
           initializeHls(videoElement, src);
         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
           console.log("Native HLS supported, using video.src");
-          cleanupHls();
+          cleanupHls(); // Ensure previous HLS is cleaned up
           videoElement.src = src;
+          setStatus('loading');
           videoElement.load();
+           // Enable captureStream for native HLS too
+            if (videoElement.captureStream) {
+              try {
+                const stream = videoElement.captureStream();
+                 (videoElement as any).capturedStream = stream; // Store stream reference
+                console.log("captureStream() enabled for native HLS.");
+              } catch (e) {
+                console.error("Failed to enable captureStream for native HLS:", e);
+              }
+            }
           videoElement.addEventListener('loadedmetadata', () => {
+              setStatus('ready'); // Set ready when metadata loads for native HLS
               if(autoPlay) {
                  videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
               }
@@ -214,11 +256,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             videoElement.removeEventListener('canplay', handleCanPlay);
             videoElement.removeEventListener('waiting', handleWaiting);
              videoElement.removeEventListener('playing', handlePlaying);
+              // Remove specific native HLS listener if added
               videoElement.removeEventListener('loadedmetadata', () => {
-                if(autoPlay) {
-                  videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
-                }
-              });
+                 setStatus('ready');
+                 if(autoPlay) {
+                   videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+                 }
+               });
         }
         setStatus('idle');
     };
@@ -239,7 +283,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             playsInline
             muted={false} // Start unmuted by default, can be changed
             autoPlay={autoPlay} // Respect the prop
-            crossOrigin="anonymous" // Needed for canvas snapshot capture
+            crossOrigin="anonymous" // Needed for canvas snapshot & potentially stream capture
         />
 
 
