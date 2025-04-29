@@ -33,7 +33,7 @@ export default function BottomNav() {
                   "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none", // Remove default button rounding
                   isActive
                     ? 'text-primary scale-110 font-medium border-t-2 border-primary' // Enhanced active state: bigger, primary color, top border
-                    : 'text-muted-foreground hover:text-accent'
+                    : 'text-muted-foreground' // Removed hover:text-accent
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
