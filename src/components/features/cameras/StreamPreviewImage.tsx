@@ -15,7 +15,9 @@ interface StreamPreviewImageProps {
 // Define desired preview image dimensions
 const PREVIEW_WIDTH = 300;
 const PREVIEW_HEIGHT = 200;
-const CAPTURE_TIMEOUT = 8000; // Max time (ms) to wait for frame capture
+const CAPTURE_TIMEOUT = 10000; // Increased timeout slightly to 10s
+const FRAGMENT_LOAD_TIMEOUT = 8000; // Increased fragment load timeout
+const FRAGMENT_LOAD_RETRIES = 2; // Allow a couple of retries
 
 const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -44,10 +46,67 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
       videoRef.current.pause();
       videoRef.current.removeAttribute('src'); // Important for cleanup
       videoRef.current.load(); // Reset element state
+       // Remove specific listeners added in effect
+      videoRef.current.removeEventListener('loadeddata', captureFrame);
+      videoRef.current.removeEventListener('canplay', captureFrame);
+      videoRef.current.removeEventListener('timeupdate', captureFrame);
     }
   };
 
+  // Moved captureFrame definition outside useEffect but within component scope
+  // Need to wrap it in useCallback or handle refs carefully if dependencies change.
+  // For now, defining inside useEffect ensures access to current refs and state.
+  const captureFrame = () => {
+      // Use local variables inside the function to avoid stale closure issues with refs/state
+      const videoElement = videoRef.current;
+      const canvasElement = canvasRef.current;
+      const currentHls = hlsRef.current;
+      const currentTimeout = timeoutRef.current;
+
+      if (!previewSrc && !isError && videoElement && canvasElement && currentHls) { // Check if preview already captured or errored
+          if (videoElement.readyState >= videoElement.HAVE_CURRENT_DATA && videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+              console.log(`Capturing frame for ${streamUrl}`);
+              const ctx = canvasElement.getContext('2d', { willReadFrequently: true });
+              if (!ctx) {
+                  console.error('Failed to get canvas context.');
+                  setIsError(true);
+                  setErrorMessage('Canvas context error.');
+                  setIsLoading(false);
+                  cleanup();
+                  return;
+              }
+              // Draw the video frame to the canvas
+              ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+              try {
+                  // Get the image data URL from the canvas
+                  const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG with quality 0.8
+                  setPreviewSrc(dataUrl);
+                  setIsLoading(false);
+                  setIsError(false);
+                  console.log(`Frame captured successfully for ${streamUrl}`);
+                  cleanup(); // Clean up immediately after successful capture
+              } catch (error) {
+                  console.error(`Error converting canvas to data URL for ${streamUrl}:`, error);
+                  setIsError(true);
+                  setErrorMessage('Failed to generate preview image.');
+                  setIsLoading(false);
+                  cleanup();
+              }
+          } else {
+              console.log(`Video not ready or dimensions 0, waiting for valid frame for ${streamUrl}... state: ${videoElement.readyState}`);
+          }
+      }
+  };
+
+
   useEffect(() => {
+    // Reset state on streamUrl change
+    setPreviewSrc(null);
+    setIsLoading(true);
+    setIsError(false);
+    setErrorMessage('');
+
     if (!streamUrl) {
       setIsError(true);
       setErrorMessage('No stream URL provided.');
@@ -55,7 +114,6 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
       return;
     }
 
-    // Ensure refs are current and HLS is supported
     if (!videoRef.current || !canvasRef.current || !Hls.isSupported()) {
       setIsError(true);
       setErrorMessage(Hls.isSupported() ? 'Component refs not ready.' : 'HLS not supported by browser.');
@@ -65,14 +123,6 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
 
     const videoElement = videoRef.current;
     const canvasElement = canvasRef.current;
-    const ctx = canvasElement.getContext('2d', { willReadFrequently: true }); // Opt-in for performance
-
-    if (!ctx) {
-      setIsError(true);
-      setErrorMessage('Could not get canvas context.');
-      setIsLoading(false);
-      return;
-    }
 
     // Set canvas dimensions
     canvasElement.width = PREVIEW_WIDTH;
@@ -80,7 +130,8 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
 
     // Set a timeout for the capture process
     timeoutRef.current = setTimeout(() => {
-        if (isLoading) { // Only trigger if still loading
+        // Check isLoading flag within the timeout callback
+        if (isLoading && !previewSrc && !isError) { // Only trigger if still loading and no success/error yet
             console.warn(`Timeout reached for capturing frame from ${streamUrl}`);
             setIsError(true);
             setErrorMessage('Preview capture timed out.');
@@ -91,53 +142,20 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
 
     console.log(`Initializing HLS for preview: ${streamUrl}`);
     const hls = new Hls({
-        // Keep config minimal for preview capture
-        startPosition: 0, // Try to get the earliest frame
-        // Reduced buffer settings might help speed up initial load
-        maxBufferLength: 5,
-        maxMaxBufferLength: 10,
-         // Abort segment loading if it takes too long
-        fragLoadingTimeOut: 5000, // 5 seconds
-        // Reduce retries to fail faster if stream is problematic
-        manifestLoadingMaxRetry: 1,
-        levelLoadingMaxRetry: 1,
-        fragLoadingMaxRetry: 1,
+        startPosition: -1, // Try to get latest frame
+        maxBufferLength: 10, // Slightly larger buffer
+        maxMaxBufferLength: 20,
+        fragLoadingTimeOut: FRAGMENT_LOAD_TIMEOUT,
+        manifestLoadingMaxRetry: FRAGMENT_LOAD_RETRIES,
+        levelLoadingMaxRetry: FRAGMENT_LOAD_RETRIES,
+        fragLoadingMaxRetry: FRAGMENT_LOAD_RETRIES,
+        // Attempt to recover from media errors if possible
+        recoverMediaError: true,
+        // Limit initial load size
+        maxBufferSize: 5 * 1024 * 1024, // Limit buffer to 5MB initially
+        maxBufferHole: 0.5, // Reduce gap jumping
     });
     hlsRef.current = hls;
-
-    let frameCaptured = false;
-
-    const captureFrame = () => {
-      if (frameCaptured || !videoElement || !ctx || !canvasElement) return;
-
-      // Ensure video has enough data to capture a frame
-      if (videoElement.readyState >= videoElement.HAVE_CURRENT_DATA) {
-        console.log(`Capturing frame for ${streamUrl}`);
-        // Draw the video frame to the canvas
-        ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-
-        try {
-            // Get the image data URL from the canvas
-            const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG with quality 0.8
-            setPreviewSrc(dataUrl);
-            setIsLoading(false);
-            setIsError(false);
-            frameCaptured = true;
-            console.log(`Frame captured successfully for ${streamUrl}`);
-            cleanup(); // Clean up immediately after successful capture
-        } catch (error) {
-             console.error(`Error converting canvas to data URL for ${streamUrl}:`, error);
-             setIsError(true);
-             setErrorMessage('Failed to generate preview image.');
-             setIsLoading(false);
-             cleanup();
-        }
-      } else {
-          console.log(`Video not ready, retrying frame capture for ${streamUrl}...`);
-          // Optionally, retry after a short delay if needed, but timeout should handle hangs
-          // requestAnimationFrame(captureFrame); // Be cautious with this to avoid infinite loops
-      }
-    };
 
     hls.on(Hls.Events.MEDIA_ATTACHED, () => {
       console.log(`HLS attached for preview: ${streamUrl}`);
@@ -146,47 +164,49 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
 
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
         console.log(`Manifest parsed for preview: ${streamUrl}`);
-        // Don't auto-play, just wait for data
+        // Don't auto-play, rely on loadeddata/canplay
     });
 
-    // Use 'loadeddata' or 'canplay' which might fire earlier than 'loadedmetadata' sometimes
+    // Use listeners to attempt capture
+    // Need to re-add listeners if component re-renders or captureFrame changes identity
     videoElement.addEventListener('loadeddata', captureFrame);
     videoElement.addEventListener('canplay', captureFrame);
-    // Fallback: attempt capture when time updates (first frame might be black)
-    videoElement.addEventListener('timeupdate', captureFrame);
-
+    videoElement.addEventListener('timeupdate', captureFrame); // Fallback
 
     hls.on(Hls.Events.ERROR, (event, data) => {
-      console.error(`HLS Error during preview load for ${streamUrl}:`, JSON.stringify(data, null, 2));
-      if (data.fatal) {
-        setIsError(true);
-        setErrorMessage(`Failed to load stream preview (${data.details}).`);
-        setIsLoading(false);
-        cleanup();
-      }
-      // Non-fatal errors are ignored for preview generation
+        // Log non-fatal errors as warnings, fatal as errors
+        if (data.fatal) {
+             console.error(`HLS Fatal Error during preview load for ${streamUrl}:`, JSON.stringify(data, null, 2));
+             setIsError(true);
+             // Use a more generic error message for fatal issues
+             setErrorMessage(`Failed to load stream preview (${data.details}).`);
+             setIsLoading(false);
+             cleanup();
+         } else {
+             // Log non-fatal errors (like timeouts) as warnings to reduce console noise
+             console.warn(`HLS Non-Fatal Error for ${streamUrl}: Type=${data.type}, Details=${data.details}`);
+             // Optionally, check if it's a timeout and maybe extend the main timeout slightly?
+             // Or just let the main timeout handle persistent failures.
+         }
     });
 
     // Attach HLS to the hidden video element
     hls.attachMedia(videoElement);
 
-    // Need to trigger loading manually in some cases if autoplay is disabled/prevented
-    videoElement.load(); // Explicitly call load
+    // Trigger loading
+    videoElement.load();
 
-    // Set video properties for silent background loading
+    // Set video properties
     videoElement.muted = true;
     videoElement.playsInline = true;
-    videoElement.autoplay = false; // Explicitly false, rely on event listeners
-    videoElement.preload = 'auto'; // Hint browser to load data
+    videoElement.autoplay = false;
+    videoElement.preload = 'auto';
 
-    // Initial attempt to play might be needed on some browsers even if muted
-    // videoElement.play().catch(e => console.warn(`Preview play() call failed for ${streamUrl}: ${e}`));
-
-    // Cleanup function
+    // Cleanup function from useEffect
     return cleanup;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streamUrl]); // Only re-run if streamUrl changes
+  }, [streamUrl]); // Re-run effect only if streamUrl changes
 
   return (
     <div className="relative w-full h-full aspect-video bg-muted overflow-hidden">
@@ -205,6 +225,7 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive-foreground bg-destructive/80 p-2 text-center">
           <CameraOff size={24} className="mb-1" />
           <p className="text-xs font-medium">Preview Unavailable</p>
+          {/* Hide detailed error message from UI unless debugging */}
           {/* <p className="text-[10px] opacity-80">{errorMessage}</p> */}
         </div>
       )}
@@ -220,7 +241,7 @@ const StreamPreviewImage: React.FC<StreamPreviewImageProps> = ({ streamUrl, alt 
           />
       )}
 
-      {/* Fallback display if loading fails or no preview generated but not explicitly an error */}
+      {/* Fallback display if loading completes without error but no preview was generated */}
       {!isLoading && !isError && !previewSrc && (
            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/10 p-2 text-center">
                 <CameraOff size={24} className="mb-1" />
