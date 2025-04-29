@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
    if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-screen bg-background">
         <LoadingSpinner size={48} />
       </div>
     );
@@ -32,8 +32,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-grow container mx-auto px-4 py-8 pb-20"> {/* Add padding-bottom */}
+    <div className="flex flex-col min-h-screen bg-background">
+      {/* Increased padding-bottom to pb-24 to avoid overlap with BottomNav */}
+      <main className="flex-grow container mx-auto px-4 py-6 pb-24 md:py-8">
         {children}
       </main>
       <BottomNav />
