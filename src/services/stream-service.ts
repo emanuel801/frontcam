@@ -37,16 +37,44 @@ export async function getCameras(): Promise<Camera[]> {
   return [
     {
       id: '1',
-      name: 'Camera 1',
-      description: 'This is camera 1',
+      name: 'Living Room Cam',
+      description: 'Wide angle view of the main living area.',
       imageUrl: 'https://picsum.photos/300/200?random=1', // Use picsum for placeholders
       streamUrl: streamUrl
     },
     {
       id: '2',
-      name: 'Camera 2',
-      description: 'This is camera 2',
+      name: 'Kitchen Cam',
+      description: 'Overlooking the kitchen counter and stove.',
       imageUrl: 'https://picsum.photos/300/200?random=2', // Use picsum for placeholders
+      streamUrl: streamUrl
+    },
+    {
+      id: '3',
+      name: 'Front Door Cam',
+      description: 'Monitoring the main entrance.',
+      imageUrl: 'https://picsum.photos/300/200?random=3', // Use picsum for placeholders
+      streamUrl: streamUrl
+    },
+    {
+      id: '4',
+      name: 'Backyard Cam',
+      description: 'Covering the backyard and patio area.',
+      imageUrl: 'https://picsum.photos/300/200?random=4', // Use picsum for placeholders
+      streamUrl: streamUrl
+    },
+     {
+      id: '5',
+      name: 'Garage Cam',
+      description: 'Inside view of the garage.',
+      imageUrl: 'https://picsum.photos/300/200?random=5', // Use picsum for placeholders
+      streamUrl: streamUrl
+    },
+     {
+      id: '6',
+      name: 'Office Cam',
+      description: 'View of the home office space.',
+      imageUrl: 'https://picsum.photos/300/200?random=6', // Use picsum for placeholders
       streamUrl: streamUrl
     }
   ];
