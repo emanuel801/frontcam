@@ -52,6 +52,7 @@ export default function CameraPlayerPage() {
   const [showSnapshotPreview, setShowSnapshotPreview] = useState<boolean>(false); // State to control preview visibility
   const [isRecording, setIsRecording] = useState<boolean>(false); // State for recording status
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null); // State for the recorded video blob URL
+  const [canRecordStream, setCanRecordStream] = useState<boolean>(false); // State to check if stream capture is possible
 
    // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
@@ -64,6 +65,37 @@ export default function CameraPlayerPage() {
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [camera, isLoadingCamera]);
+
+    // Effect to check recording capabilities once video element is ready
+    useEffect(() => {
+        const checkRecordingSupport = () => {
+            const videoElement = videoRef.current;
+            const supported = typeof window !== 'undefined' &&
+                              !!window.MediaRecorder &&
+                              !!videoElement &&
+                              typeof videoElement.captureStream === 'function';
+            setCanRecordStream(supported);
+            if (supported) {
+                console.log("MediaRecorder and captureStream are supported.");
+            } else {
+                console.warn("MediaRecorder or captureStream not supported.");
+            }
+        };
+        // Check initially and potentially after video loads data
+        checkRecordingSupport();
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            videoElement.addEventListener('loadeddata', checkRecordingSupport);
+            videoElement.addEventListener('canplay', checkRecordingSupport);
+        }
+        return () => {
+            if (videoElement) {
+                videoElement.removeEventListener('loadeddata', checkRecordingSupport);
+                 videoElement.removeEventListener('canplay', checkRecordingSupport);
+            }
+        };
+    }, []); // Empty dependency array, relies on ref being stable
+
 
     // Cleanup snapshot timeout and recorder on unmount
     useEffect(() => {
@@ -246,24 +278,37 @@ export default function CameraPlayerPage() {
              toast({ title: "Error", description: "Video element not available.", variant: "destructive" });
              return;
         }
-         // Check for MediaRecorder support
-         if (!window.MediaRecorder) {
-             toast({ title: "Unsupported Browser", description: "Video recording is not supported in your browser.", variant: "destructive" });
+         // Check for MediaRecorder support (already done by canRecordStream check, but good to double-check)
+         if (!window.MediaRecorder || !canRecordStream) {
+             toast({ title: "Unsupported Browser", description: "Video recording is not supported in your browser or for this video element.", variant: "destructive" });
              return;
          }
 
-         // Important: Get stream from video element's srcObject.
-         // This might be null or not a MediaStream if using HLS or similar tech.
-         const stream = (videoRef.current.captureStream && videoRef.current.captureStream()) || videoRef.current.srcObject;
+         let stream: MediaStream | null = null;
+         try {
+            // Attempt to capture the stream from the video element
+            stream = videoRef.current.captureStream();
+            console.log("Attempting captureStream(), result:", stream);
+         } catch (e) {
+             console.error("Error calling captureStream():", e);
+             toast({
+                 title: "Recording Error",
+                 description: `Failed to capture video stream: ${(e as Error).message}. Recording may not be possible for this stream type.`,
+                 variant: "destructive",
+                 duration: 5000,
+             });
+             return;
+         }
 
-         if (!stream || !(stream instanceof MediaStream)) {
+
+         if (!stream || !(stream instanceof MediaStream) || stream.getTracks().length === 0) {
             toast({
                 title: "Recording Error",
-                description: "Cannot access the video stream for recording. This might be due to the stream type (e.g., HLS).",
+                description: "Cannot access the video stream for recording. The stream might be protected or incompatible (e.g., certain HLS configurations).",
                 variant: "destructive",
-                duration: 5000,
+                duration: 6000,
             });
-            console.error("Failed to get MediaStream from video element:", videoRef.current.srcObject);
+            console.error("Failed to get a valid MediaStream from video element. Stream:", stream);
             return;
          }
 
@@ -283,6 +328,7 @@ export default function CameraPlayerPage() {
                  }
             }
         }
+        console.log("Using MIME type for recording:", options.mimeType);
 
         try {
              // Clean up previous recording if any
@@ -315,32 +361,40 @@ export default function CameraPlayerPage() {
                 setIsRecording(false);
                 mediaRecorderRef.current = null; // Clear the ref
                 recordedChunksRef.current = []; // Clear chunks after processing
-                 // Detach stream capture if needed (or let browser handle it)
-                 // stream.getTracks().forEach(track => track.stop()); // Stop tracks if captureStream was used
+                // Stop the tracks obtained from captureStream
+                stream?.getTracks().forEach(track => track.stop());
+                console.log("Stopped captured stream tracks.");
             };
 
              recorder.onerror = (event) => {
                 console.error("MediaRecorder Error:", event);
                 toast({ title: "Recording Error", description: `An error occurred during recording.`, variant: "destructive" });
                 setIsRecording(false);
-                mediaRecorderRef.current = null;
-                recordedChunksRef.current = [];
+                 // Clean up resources on error as well
+                 if (mediaRecorderRef.current) {
+                     mediaRecorderRef.current = null;
+                 }
+                 recordedChunksRef.current = [];
+                 stream?.getTracks().forEach(track => track.stop());
+                 console.log("Stopped captured stream tracks after error.");
             };
 
-            recorder.start();
+            recorder.start(1000); // Record in 1-second chunks
             setIsRecording(true);
             toast({ title: "Recording Started", description: "Video recording is in progress..." });
 
         } catch (error) {
             console.error('Error starting recording:', error);
              toast({ title: "Recording Error", description: `Could not start recording: ${(error as Error).message}`, variant: "destructive" });
+             // Clean up stream if recorder setup failed
+             stream?.getTracks().forEach(track => track.stop());
         }
     };
 
     const handleStopRecording = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
-            // State update (setIsRecording(false)) and further actions happen in recorder.onstop
+             // State update (setIsRecording(false)) and further actions happen in recorder.onstop
         } else {
              toast({ title: "Info", description: "Recording is not currently active." });
         }
@@ -399,7 +453,6 @@ export default function CameraPlayerPage() {
 
   const showSearchLoadingOverlay = isLoadingSearch;
   const isLive = !searchedTimestamp; // Determine if currently viewing live feed
-  const canRecord = typeof window !== 'undefined' && !!window.MediaRecorder && !!videoRef.current?.captureStream; // Check if recording is generally possible
 
 
   return (
@@ -504,47 +557,50 @@ export default function CameraPlayerPage() {
                    </Button>
                )}
 
-               {/* Recording Controls */}
-               {canRecord && currentStreamUrl && ( // Show only if recording is possible and stream is active
+               {/* Recording Controls - Conditionally Rendered */}
+               {currentStreamUrl && ( // Show only if stream is active
                    <>
-                       {!isRecording ? (
-                           <Button
-                               onClick={handleStartRecording}
-                               variant="destructive"
-                               size="sm"
-                               className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-destructive/90 flex items-center gap-1.5"
-                               disabled={isLoadingSearch} // Disable if searching
-                           >
-                               <CircleDot className="h-4 w-4 animate-pulse" /> Start Recording
-                           </Button>
+                       {canRecordStream ? ( // Check if basic support exists
+                            <>
+                                {!isRecording ? (
+                                    <Button
+                                        onClick={handleStartRecording}
+                                        variant="destructive"
+                                        size="sm"
+                                        className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-destructive/90 flex items-center gap-1.5"
+                                        disabled={isLoadingSearch} // Disable if searching
+                                    >
+                                        <CircleDot className="h-4 w-4 animate-pulse" /> Start Recording
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={handleStopRecording}
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-muted/80 border-destructive/50 text-destructive flex items-center gap-1.5"
+                                    >
+                                        <StopCircle className="h-4 w-4" /> Stop Recording
+                                    </Button>
+                                )}
+                                {/* Download Recording Button */}
+                                {recordedVideoUrl && !isRecording && (
+                                    <Button
+                                        onClick={handleDownloadRecording}
+                                        variant="link"
+                                        className="text-accent flex items-center gap-1.5"
+                                        size="sm"
+                                    >
+                                        <Download className="h-4 w-4"/> Download Recording
+                                    </Button>
+                                )}
+                            </>
                        ) : (
-                           <Button
-                               onClick={handleStopRecording}
-                               variant="outline"
-                               size="sm"
-                               className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-muted/80 border-destructive/50 text-destructive flex items-center gap-1.5"
-                           >
-                               <StopCircle className="h-4 w-4" /> Stop Recording
-                           </Button>
-                       )}
-                       {/* Download Recording Button */}
-                       {recordedVideoUrl && !isRecording && (
-                           <Button
-                               onClick={handleDownloadRecording}
-                               variant="link"
-                               className="text-accent flex items-center gap-1.5"
-                               size="sm"
-                           >
-                               <Download className="h-4 w-4"/> Download Recording
-                           </Button>
+                            <p className="text-xs text-muted-foreground italic w-full text-center">
+                                (Video recording not supported on this browser/device)
+                            </p>
                        )}
                    </>
                )}
-                {!canRecord && currentStreamUrl && (
-                     <p className="text-xs text-muted-foreground italic w-full text-center">
-                         (Video recording not supported in this browser or for this stream type)
-                     </p>
-                )}
          </div>
 
          {/* Snapshot Preview Area (Conditional Render based on showSnapshotPreview) */}
@@ -578,5 +634,3 @@ export default function CameraPlayerPage() {
     </div>
   );
 }
-
-
