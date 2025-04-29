@@ -8,11 +8,10 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video } from 'lucide-react'; // Added Video icon
+import { WifiOff, Video, ChevronLeft } from 'lucide-react'; // Added Video icon
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
 
 export default function CameraPlayerPage() {
   const params = useParams();
@@ -20,16 +19,20 @@ export default function CameraPlayerPage() {
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
 
-   // Fetch initial camera data to get the default stream URL
+   // Fetch camera data to get details including environmentId
   const { data: cameras, isLoading: isLoadingCameras, isError: isErrorCameras, error: errorCameras } = useQuery<Camera[]>({
-      queryKey: ['cameras'],
+      queryKey: ['cameras'], // Fetch all cameras initially to find the one needed
       queryFn: getCameras,
-      staleTime: Infinity, // Cache indefinitely as it's unlikely to change often within the player view
-      enabled: !!cameraId, // Only run if cameraId is available
+      staleTime: Infinity,
+      enabled: !!cameraId,
   });
 
    // Find the specific camera details
    const camera = cameras?.find(c => c.id === cameraId);
+
+   // Determine the correct back link based on camera's environment
+   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras'; // Default to main environments page if camera not found yet
+
 
    useEffect(() => {
         if (camera && !currentStreamUrl) {
@@ -83,7 +86,8 @@ export default function CameraPlayerPage() {
   if (isErrorCameras || !camera) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-         <Link href="/cameras" passHref>
+         {/* Use the dynamic backLink */}
+         <Link href={backLink} passHref>
             <Button variant="outline" className="mb-4">
                 <ChevronLeft className="mr-2 h-4 w-4" /> Back to Cameras
             </Button>
@@ -103,9 +107,10 @@ export default function CameraPlayerPage() {
   return (
     // Increased vertical spacing with space-y-6
     <div className="space-y-6 pb-8">
-         <Link href="/cameras" passHref>
+         {/* Use the dynamic backLink and specific environment name */}
+         <Link href={backLink} passHref>
             <Button variant="outline" size="sm" className="mb-2">
-                <ChevronLeft className="mr-1 h-4 w-4" /> All Cameras
+                <ChevronLeft className="mr-1 h-4 w-4" /> Back to {camera.environmentName} Cameras
             </Button>
         </Link>
        <div className="flex items-center space-x-3">

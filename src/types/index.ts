@@ -9,4 +9,13 @@ export interface Camera {
   description: string;
   imageUrl: string;
   streamUrl: string;
+  environmentId: string; // Added environment ID
+  environmentName: string; // Added environment name
+}
+
+export interface Environment {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
 }

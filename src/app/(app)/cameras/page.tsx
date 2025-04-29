@@ -1,18 +1,20 @@
+// src/app/(app)/cameras/page.tsx -> Now serves as the Environment List page
 "use client";
 import React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { getCameras } from '@/services/stream-service';
+import { getEnvironments } from '@/services/stream-service'; // Fetch environments now
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video } from 'lucide-react';
-import StreamPreviewImage from '@/components/features/cameras/StreamPreviewImage'; // Import the new component
+import { Home, WifiOff, ChevronRight } from 'lucide-react'; // Use Home icon for environments
+import Image from 'next/image'; // Use next/image for environment images
+import type { Environment } from '@/types'; // Import Environment type
 
-export default function CameraListPage() {
-  const { data: cameras, isLoading, isError, error } = useQuery({
-      queryKey: ['cameras'],
-      queryFn: getCameras,
+export default function EnvironmentListPage() {
+  const { data: environments, isLoading, isError, error } = useQuery<Environment[]>({ // Use Environment type
+      queryKey: ['environments'], // Changed query key
+      queryFn: getEnvironments, // Changed query function
        staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -31,7 +33,7 @@ export default function CameraListPage() {
          <WifiOff className="h-4 w-4"/>
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            Failed to load cameras. Please check your connection and try again. {(error as Error)?.message}
+            Failed to load environments. Please check your connection and try again. {(error as Error)?.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -41,32 +43,36 @@ export default function CameraListPage() {
 
   return (
     <div className="space-y-6">
-       <div className="flex items-center space-x-2 mb-6"> {/* Added margin-bottom */}
-         <Video className="h-8 w-8 text-primary" />
-         <h1 className="text-3xl font-bold text-primary">Available Cameras</h1>
+       <div className="flex items-center space-x-2 mb-6">
+         <Home className="h-8 w-8 text-primary" />
+         <h1 className="text-3xl font-bold text-primary">Camera Environments</h1>
        </div>
-      {/* Adjusted grid columns for better mobile responsiveness */}
+      <p className="text-muted-foreground">Select an environment to view its cameras.</p>
+      {/* Display environments as cards */}
       <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 xl:grid-cols-4">
-        {cameras?.map((camera) => (
-          <Link href={`/cameras/${camera.id}`} key={camera.id} passHref legacyBehavior>
-            <a className="group block"> {/* Use anchor tag for better semantics and group for hover effects */}
+        {environments?.map((env) => (
+          // Link to the specific environment's camera page
+          <Link href={`/cameras/environment/${env.id}`} key={env.id} passHref legacyBehavior>
+            <a className="group block">
                 <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col bg-card border border-border hover:border-primary">
-                <CardHeader className="relative h-40 w-full p-0 bg-muted"> {/* Set background for loading/error state */}
-                    {/* Replace Image with StreamPreviewImage */}
-                    <StreamPreviewImage
-                        streamUrl={camera.streamUrl}
-                        alt={`Preview for ${camera.name}`}
-                     />
+                <CardHeader className="relative h-40 w-full p-0 bg-muted">
+                    <Image
+                        src={env.imageUrl}
+                        alt={`Image of ${env.name}`}
+                        layout="fill"
+                        objectFit="cover"
+                        className="transition-transform duration-300 group-hover:scale-105"
+                        unoptimized // Use if picsum causes issues or for performance
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                     {/* Optional: Add a play icon overlay on hover */}
                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <Video className="h-12 w-12 text-white/80" />
+                        <ChevronRight className="h-12 w-12 text-white/80" />
                      </div>
                 </CardHeader>
                 <CardContent className="p-4 flex-grow flex flex-col justify-between">
                     <div>
-                    <CardTitle className="text-lg font-semibold mb-1 text-primary group-hover:text-accent transition-colors">{camera.name}</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground line-clamp-2">{camera.description}</CardDescription>
+                    <CardTitle className="text-lg font-semibold mb-1 text-primary group-hover:text-accent transition-colors">{env.name}</CardTitle>
+                    <CardDescription className="text-sm text-muted-foreground line-clamp-2">{env.description}</CardDescription>
                     </div>
                 </CardContent>
                 </Card>
@@ -74,6 +80,11 @@ export default function CameraListPage() {
           </Link>
         ))}
       </div>
+       {!environments || environments.length === 0 && (
+            <div className="text-center py-10">
+                 <p className="text-muted-foreground">No environments found.</p>
+            </div>
+       )}
     </div>
   );
 }
