@@ -1,6 +1,9 @@
 export interface User {
   id: string;
   username: string;
+  name?: string; // Optional name field
+  email?: string; // Optional email field
+  plan?: string; // Optional plan field
 }
 
 export interface Camera {

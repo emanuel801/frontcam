@@ -21,7 +21,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Simulate checking auth status on mount
     const storedUser = localStorage.getItem('streamwatch_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        // Ensure all expected fields are present or provide defaults
+        setUser({
+            id: parsedUser.id || '1',
+            username: parsedUser.username || 'Unknown User',
+            name: parsedUser.name || 'Test User', // Add default name if missing
+            email: parsedUser.email || 'test@example.com', // Add default email if missing
+            plan: parsedUser.plan || 'Premium', // Add default plan if missing
+        });
+      } catch (error) {
+          console.error("Failed to parse stored user data:", error);
+          localStorage.removeItem('streamwatch_user'); // Clear invalid data
+      }
     }
     // Simulate async check (e.g., token validation)
     setTimeout(() => {
@@ -30,7 +43,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (username: string) => {
-    const userData: User = { id: '1', username: username }; // Mock user data
+    // Mock user data including new fields
+    const userData: User = {
+        id: '1',
+        username: username,
+        name: 'Test User', // Example name
+        email: 'test@example.com', // Example email
+        plan: 'Premium' // Example plan
+    };
     setUser(userData);
     localStorage.setItem('streamwatch_user', JSON.stringify(userData));
     setLoading(false); // Ensure loading is false after login
