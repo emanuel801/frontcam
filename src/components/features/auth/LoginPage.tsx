@@ -37,17 +37,13 @@ export default function LoginPage() {
       // Replace with actual authentication logic
       // For demo: hardcode credentials
       if ((username === 'testuser' || username === 'user') && password === 'password') {
-        const userRole = login(username); // login function returns the role
+        login(username); // Call login (no role returned)
          toast({
           title: "Welcome!",
           description: "Logged in successfully.",
         });
-        // Redirect based on role
-        if (userRole === 'admin') {
-            router.replace('/admin'); // Redirect admin to admin dashboard
-        } else {
-            router.replace('/cameras'); // Redirect regular user to cameras page
-        }
+        // Always redirect to cameras page
+        router.replace('/cameras');
         // No need to set isLoading to false here, as redirection happens
       } else {
          toast({
@@ -78,7 +74,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="e.g., testuser / user" // Updated placeholder
+                placeholder="e.g., user" // Updated placeholder (removed admin example)
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -119,7 +115,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
          <CardFooter className="text-center text-xs text-muted-foreground pt-4 pb-6"> {/* Adjusted padding */}
-            <p>Demo: Use <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">testuser</code> (admin) or <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">user</code> (regular) / <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">password</code></p>
+            <p>Demo: Use <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">user</code> / <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">password</code></p>
         </CardFooter>
       </Card>
     </div>

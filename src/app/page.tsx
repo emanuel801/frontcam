@@ -8,19 +8,16 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 
 export default function Home() {
-  const { user, loading, isAdmin } = useAuth(); // Get isAdmin status
+  const { user, loading } = useAuth(); // Removed isAdmin
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
-        // Redirect based on role
-      if (isAdmin) {
-        router.replace('/admin'); // Admins go to admin dashboard
-      } else {
-        router.replace('/cameras'); // Regular users go to cameras list
-      }
+      // Always redirect logged-in users to cameras
+      router.replace('/cameras');
     }
-  }, [user, loading, isAdmin, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, router]);
 
 
   if (loading) {

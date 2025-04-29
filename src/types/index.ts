@@ -1,4 +1,5 @@
-export type UserRole = 'admin' | 'user';
+
+// Removed UserRole type export
 
 export interface User {
   id: string;
@@ -6,7 +7,7 @@ export interface User {
   name?: string; // Optional name field
   email?: string; // Optional email field
   plan?: string; // Optional plan field
-  role: UserRole; // Added role field (made mandatory)
+  // Removed role field
 }
 
 export interface Camera {

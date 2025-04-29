@@ -10,7 +10,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
- const { user, loading, isAdmin } = useAuth(); // Get isAdmin status as well
+ const { user, loading } = useAuth(); // Removed isAdmin
  const router = useRouter();
 
   useEffect(() => {
@@ -18,13 +18,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (!user) {
             // Redirect to login if not authenticated after loading
             router.replace('/');
-        } else if (isAdmin) {
-            // Redirect admin away from app layout to admin layout
-            console.warn("Admin user accessing non-admin area. Redirecting to admin dashboard...");
-            router.replace('/admin');
         }
+        // Removed admin check and redirection
     }
-  }, [user, loading, isAdmin, router]);
+  }, [user, loading, router]);
 
    if (loading) {
     return (
@@ -35,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
    // Render nothing or loading while redirecting or if checks fail
-   if (!user || isAdmin) {
+   if (!user) { // Removed isAdmin check
     return (
          <div className="flex justify-center items-center h-screen bg-background">
             <LoadingSpinner size={48} />
@@ -44,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
      );
   }
 
-  // User is authenticated and not an admin, render the app layout
+  // User is authenticated, render the app layout
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header /> {/* Add the Header component here */}

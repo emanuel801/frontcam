@@ -1,16 +1,16 @@
 "use client";
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import type { User, UserRole } from '@/types'; // Import UserRole
+import type { User } from '@/types'; // Removed UserRole import
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { useRouter } from 'next/navigation'; // Import useRouter for redirection
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string) => UserRole; // Return the role for redirection handling
+  login: (username: string) => void; // Return type changed to void
   logout: () => void;
   loading: boolean;
-  isAdmin: boolean; // Convenience flag
+  // Removed isAdmin flag
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,8 +18,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start loading initially
-  const [isAdmin, setIsAdmin] = useState(false); // State for admin status
-  const router = useRouter(); // Use router inside provider if needed for complex logic, but prefer handling redirection in components
+  // Removed isAdmin state
+  const router = useRouter();
 
   useEffect(() => {
     // Simulate checking auth status on mount
@@ -28,18 +28,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const parsedUser: User = JSON.parse(storedUser);
         // Ensure all expected fields are present or provide defaults
-        // Crucially, validate or assign the role
-        const role: UserRole = parsedUser.role || (parsedUser.username === 'testuser' ? 'admin' : 'user');
         const completeUser: User = {
             id: parsedUser.id || '1',
             username: parsedUser.username || 'Unknown User',
-            name: parsedUser.name || (role === 'admin' ? 'Admin User' : 'Test User'),
+            name: parsedUser.name || 'Test User',
             email: parsedUser.email || `${parsedUser.username || 'user'}@example.com`,
-            plan: parsedUser.plan || (role === 'admin' ? 'Enterprise' : 'Premium'),
-            role: role, // Assign determined role
+            plan: parsedUser.plan || 'Premium',
+            // Removed role assignment
         };
         setUser(completeUser);
-        setIsAdmin(completeUser.role === 'admin');
+        // Removed setIsAdmin based on role
       } catch (error) {
           console.error("Failed to parse stored user data:", error);
           localStorage.removeItem('streamwatch_user'); // Clear invalid data
@@ -51,34 +49,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 500); // Simulate network latency
   }, []);
 
-  const login = (username: string): UserRole => {
-    // Mock user data including new fields and role
-    const role: UserRole = username === 'testuser' ? 'admin' : 'user'; // Assign admin role to testuser
+  const login = (username: string): void => { // Return type changed to void
+    // Mock user data without role
     const userData: User = {
         id: '1', // Use a more robust ID generation in a real app
         username: username,
-        name: role === 'admin' ? 'Admin User' : 'Test User', // Example name based on role
+        name: 'Test User', // Example name
         email: `${username}@example.com`, // Example email
-        plan: role === 'admin' ? 'Enterprise' : 'Premium', // Example plan based on role
-        role: role,
+        plan: 'Premium', // Example plan
+        // Removed role
     };
     setUser(userData);
-    setIsAdmin(role === 'admin');
+    // Removed setIsAdmin
     localStorage.setItem('streamwatch_user', JSON.stringify(userData));
     setLoading(false); // Ensure loading is false after login
-    return role; // Return the role
+    // Removed return role
   };
 
   const logout = () => {
     setUser(null);
-    setIsAdmin(false);
+    // Removed setIsAdmin(false);
     localStorage.removeItem('streamwatch_user');
     setLoading(false); // Ensure loading is false after logout
     router.push('/'); // Redirect to login page on logout
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
