@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -23,7 +24,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
 
 
     if (Hls.isSupported()) {
-      const hls = new Hls();
+      const hls = new Hls({
+        // Optional: Add configuration for error handling, like retry delays
+        // fragLoadingRetryDelay: 1000,
+        // manifestLoadingRetryDelay: 1000,
+      });
       hlsRef.current = hls; // Store instance for cleanup
       hls.loadSource(src);
       hls.attachMedia(videoElement);
@@ -35,15 +40,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       });
        hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
-          console.error('HLS Fatal Error:', data);
+          // Log more specific details for fatal errors
+          console.error(`HLS Fatal Error: Type=${data.type}, Details=${data.details}`, data);
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               console.error('Network error - Retrying or handling appropriately');
-               // Example: Try to recover connection
+               // Example: Try to recover connection (HLS.js often does this automatically)
                // hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               console.error('Media error - Trying to recover');
+              // Attempt recovery
               hls.recoverMediaError();
               break;
             default:
@@ -54,7 +61,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
               break;
           }
         } else {
-             console.warn('HLS Non-Fatal Error:', data);
+             console.warn(`HLS Non-Fatal Error: Type=${data.type}, Details=${data.details}`, data);
         }
       });
 
@@ -68,7 +75,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
          });
       });
        videoElement.addEventListener('error', (e) => {
-           console.error('Native HLS playback error:', e);
+           // More detailed error logging for native playback
+           const error = videoElement.error;
+           console.error('Native HLS playback error:', `Code: ${error?.code}, Message: ${error?.message}`, e);
            // Handle native playback errors
        });
     } else {
@@ -88,7 +97,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
          // videoElement.removeEventListener('error', ...);
          videoElement.pause();
          videoElement.removeAttribute('src'); // Prevent memory leaks
-         videoElement.load(); // Reset video element state
+         try { videoElement.load(); } catch(e) { /* Ignore errors on load() during cleanup */ } // Reset video element state
       }
     };
   }, [src]); // Re-run effect if the src changes
@@ -100,7 +109,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
         className="w-full h-full object-contain" // Use object-contain to fit video without stretching
         aria-label="Camera Stream Player"
         playsInline // Important for mobile playback
-        muted // Often required for autoplay on mobile
+        // Autoplay might require muted depending on browser policies
+        // Consider removing muted if user interaction starts playback
+        muted
     />
     );
 };
