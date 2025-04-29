@@ -4,13 +4,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle } from 'lucide-react'; // Removed LayoutGrid icon
+import { Camera, UserCircle, Home } from 'lucide-react'; // Added Home icon
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { href: '/cameras', label: 'Cameras', icon: Camera },
-  // { href: '/environments', label: 'Environments', icon: LayoutGrid }, // Removed Environments item
+  { href: '/cameras', label: 'Cameras', icon: Camera }, // Points to environments list now
+  // { href: '/environments', label: 'Environments', icon: LayoutGrid }, // This route is removed/merged into cameras
   { href: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
@@ -27,7 +27,7 @@ export default function BottomNav() {
           // Improved active state check for sub-pages
            // Special check for cameras to include sub-paths like /cameras/environment/* and /cameras/[cameraId]
            const isActive = item.href === '/cameras'
-            ? pathname.startsWith('/cameras')
+            ? pathname.startsWith('/cameras') // Covers /cameras and /cameras/environment/* and /cameras/[cameraId]/*
             : pathname === item.href;
 
 
@@ -36,10 +36,10 @@ export default function BottomNav() {
               <Button
                 variant="ghost"
                 className={cn(
-                  "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0", // Remove hover effect and focus ring for nav items
+                  "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent", // Added hover:bg-transparent globally
                   isActive
                     ? 'text-primary scale-110 font-medium border-t-2 border-primary' // Enhanced active state: bigger, primary color, top border
-                    : 'text-muted-foreground hover:bg-transparent hover:text-muted-foreground' // Override hover styles
+                    : 'text-muted-foreground hover:text-muted-foreground' // Only change text color on hover for inactive
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
