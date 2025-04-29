@@ -1,9 +1,11 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { AlertCircle, WifiOff } from 'lucide-react'; // Icons for error states
 import { LoadingSpinner } from '@/components/ui/loading-spinner'; // Re-use loading spinner
+import { cn } from '@/lib/utils'; // Import cn utility function
 
 interface VideoPlayerProps {
   src: string;
@@ -69,7 +71,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error(`HLS Error: Type=${data.type}, Details=${data.details}, Fatal=${data.fatal}`, data);
+        // Stringify the data object for logging
+        console.error(`HLS Error: Type=${data.type}, Details=${data.details}, Fatal=${data.fatal}`, JSON.stringify(data, null, 2));
         setPlayerState('error');
         let userMessage = "An error occurred while loading the video.";
 
@@ -209,3 +212,4 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
 };
 
 export default VideoPlayer;
+
