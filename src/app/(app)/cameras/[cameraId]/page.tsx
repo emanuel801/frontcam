@@ -190,11 +190,10 @@ export default function CameraPlayerPage() {
             </div>
          </div>
 
-        {/* Video Player Area */}
-        <div className="relative aspect-video w-full max-w-5xl mx-auto bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-border/60">
-             {/* Status Indicator (Live or Recording Time) */}
+         {/* Status Indicator (Live or Recording Time) - Moved outside the player div */}
+         <div className="flex justify-center mb-3">
              <div className={cn(
-                "absolute top-3 left-3 z-20 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
+                "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
                 isLive ? "bg-red-600/80 text-white" : "bg-blue-600/80 text-white"
              )}>
                 {isLive ? (
@@ -207,6 +206,11 @@ export default function CameraPlayerPage() {
                    </>
                 )}
              </div>
+         </div>
+
+        {/* Video Player Area */}
+        <div className="relative aspect-video w-full max-w-5xl mx-auto bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-border/60">
+            {/* Status Indicator Removed from here */}
 
             {currentStreamUrl ? (
                  <VideoPlayer
