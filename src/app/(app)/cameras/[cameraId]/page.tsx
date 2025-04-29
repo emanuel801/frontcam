@@ -25,6 +25,7 @@ export default function CameraPlayerPage() {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null); // Ref for snapshot canvas
+  const snapshotTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for snapshot preview timeout
 
   // Fetch camera data
   const { data: camera, isLoading: isLoadingCamera, isError: isErrorCamera, error: errorCamera, refetch: refetchCamera } = useQuery<Camera | undefined>({
@@ -46,6 +47,7 @@ export default function CameraPlayerPage() {
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null); // State for captured snapshot
+  const [showSnapshotPreview, setShowSnapshotPreview] = useState<boolean>(false); // State to control preview visibility
 
    // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
@@ -58,6 +60,15 @@ export default function CameraPlayerPage() {
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [camera, isLoadingCamera]);
+
+    // Cleanup snapshot timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (snapshotTimeoutRef.current) {
+                clearTimeout(snapshotTimeoutRef.current);
+            }
+        };
+    }, []);
 
 
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
@@ -78,6 +89,8 @@ export default function CameraPlayerPage() {
         setCurrentStreamUrl(newUrl);
         setSearchedTimestamp(variables.startDateTime); // Store start time
         setSnapshotUrl(null); // Clear snapshot when searching for new recording
+        setShowSnapshotPreview(false); // Hide previous snapshot preview
+        if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear existing timeout
         setIsLoadingSearch(false);
         toast({
           title: "Recording Found",
@@ -103,6 +116,8 @@ export default function CameraPlayerPage() {
              setCurrentStreamUrl(camera.streamUrl);
              setSearchedTimestamp(null); // Back to live mode
              setSnapshotUrl(null); // Clear snapshot
+             setShowSnapshotPreview(false);
+             if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
          } else {
              setCurrentStreamUrl(null);
          }
@@ -121,6 +136,8 @@ export default function CameraPlayerPage() {
           setCurrentStreamUrl(camera.streamUrl);
           setSearchedTimestamp(null);
           setSnapshotUrl(null); // Clear snapshot
+          setShowSnapshotPreview(false); // Hide snapshot preview
+          if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear timeout
           toast({
               title: "Live Feed",
               description: "Switched back to the live camera feed.",
@@ -146,6 +163,11 @@ export default function CameraPlayerPage() {
         }
 
         try {
+            // Clear previous timeout if any
+            if (snapshotTimeoutRef.current) {
+                clearTimeout(snapshotTimeoutRef.current);
+            }
+
             // Set canvas dimensions to video's actual dimensions
             canvasElement.width = videoElement.videoWidth;
             canvasElement.height = videoElement.videoHeight;
@@ -161,11 +183,21 @@ export default function CameraPlayerPage() {
             // Get the image data URL from the canvas (JPEG format)
             const dataUrl = canvasElement.toDataURL('image/jpeg', 0.9); // Quality 0.9
             setSnapshotUrl(dataUrl);
+            setShowSnapshotPreview(true); // Show the preview
 
              toast({
                 title: "Snapshot Captured",
-                description: "Snapshot saved. You can download it below.",
+                description: "Preview shown below. It will disappear shortly.",
              });
+
+             // Set timeout to hide the preview after 10 seconds
+             snapshotTimeoutRef.current = setTimeout(() => {
+                 setShowSnapshotPreview(false);
+                 toast({
+                     title: "Snapshot Preview Hidden",
+                     description: "You can still download the snapshot.",
+                 });
+             }, 10000); // 10 seconds
 
         } catch (error) {
              console.error('Error capturing snapshot:', error);
@@ -175,6 +207,8 @@ export default function CameraPlayerPage() {
                 variant: "destructive",
              });
              setSnapshotUrl(null);
+             setShowSnapshotPreview(false);
+             if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
         }
     };
 
@@ -322,11 +356,22 @@ export default function CameraPlayerPage() {
               >
                   <CameraIcon className="h-4 w-4" /> Capture Snapshot
               </Button>
+               {/* Show download button only if a snapshot has been captured (even if preview is hidden) */}
+               {snapshotUrl && (
+                   <Button
+                       onClick={handleDownloadSnapshot}
+                       variant="link"
+                       className="text-accent flex items-center gap-1.5"
+                       size="sm" // Make consistent size
+                   >
+                       <Download className="h-4 w-4"/> Download Snapshot
+                   </Button>
+               )}
          </div>
 
-         {/* Snapshot Preview Area */}
-         {snapshotUrl && (
-            <div className="mt-6 flex flex-col items-center">
+         {/* Snapshot Preview Area (Conditional Render based on showSnapshotPreview) */}
+         {snapshotUrl && showSnapshotPreview && (
+            <div className="mt-6 flex flex-col items-center transition-opacity duration-500 ease-in-out opacity-100">
                 <h3 className="text-lg font-semibold mb-3 text-primary">Snapshot Preview</h3>
                 <div className="relative w-full max-w-sm rounded-lg overflow-hidden shadow-lg border border-border">
                     <Image
@@ -338,15 +383,19 @@ export default function CameraPlayerPage() {
                         unoptimized // Data URLs don't need optimization
                     />
                 </div>
-                <Button
+                 {/* Optional: Keep download button here too if desired when preview is visible */}
+                 {/*
+                 <Button
                     onClick={handleDownloadSnapshot}
                     variant="link"
                     className="mt-3 text-accent flex items-center gap-1.5"
-                >
+                 >
                     <Download className="h-4 w-4"/> Download Snapshot
-                </Button>
+                 </Button>
+                 */}
             </div>
          )}
+
 
          {/* Enhanced DateTimeSearch component styling */}
          <div className="flex justify-center px-2 mt-6">
