@@ -3,13 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle } from 'lucide-react'; // Using UserCircle for better visual
+import { Camera, UserCircle, LayoutGrid } from 'lucide-react'; // Added LayoutGrid icon
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/cameras', label: 'Cameras', icon: Camera },
-  { href: '/profile', label: 'Profile', icon: UserCircle }, // Changed icon
+  { href: '/environments', label: 'Environments', icon: LayoutGrid }, // Added Environments item
+  { href: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
 export default function BottomNav() {
@@ -22,18 +23,18 @@ export default function BottomNav() {
       {/* Adjusted justify-around and padding */}
       <div className="flex justify-around items-center h-full max-w-md mx-auto px-2">
         {navItems.map((item) => {
-          // Improved active state check for camera details page
-          const isActive = pathname === item.href || (item.href === '/cameras' && pathname.startsWith('/cameras/'));
+          // Improved active state check for sub-pages
+           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link href={item.href} key={item.href} passHref legacyBehavior>
               <Button
                 variant="ghost"
                 className={cn(
-                  "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none", // Remove default button rounding
+                  "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0", // Remove hover effect and focus ring for nav items
                   isActive
                     ? 'text-primary scale-110 font-medium border-t-2 border-primary' // Enhanced active state: bigger, primary color, top border
-                    : 'text-muted-foreground' // Removed hover:text-accent
+                    : 'text-muted-foreground hover:bg-transparent hover:text-muted-foreground' // Override hover styles
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
