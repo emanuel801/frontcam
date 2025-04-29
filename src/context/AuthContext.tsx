@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import type { User } from '@/types';
+import type { User, UserRole } from '@/types'; // Import UserRole
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (username: string) => void;
   logout: () => void;
   loading: boolean;
+  isAdmin: boolean; // Convenience flag
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,21 +17,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start loading initially
+  const [isAdmin, setIsAdmin] = useState(false); // State for admin status
 
   useEffect(() => {
     // Simulate checking auth status on mount
     const storedUser = localStorage.getItem('streamwatch_user');
     if (storedUser) {
       try {
-        const parsedUser = JSON.parse(storedUser);
+        const parsedUser: User = JSON.parse(storedUser);
         // Ensure all expected fields are present or provide defaults
-        setUser({
+        const completeUser: User = {
             id: parsedUser.id || '1',
             username: parsedUser.username || 'Unknown User',
             name: parsedUser.name || 'Test User', // Add default name if missing
             email: parsedUser.email || 'test@example.com', // Add default email if missing
             plan: parsedUser.plan || 'Premium', // Add default plan if missing
-        });
+            role: parsedUser.role || (parsedUser.username === 'testuser' ? 'admin' : 'user'), // Assign role based on stored data or username
+        };
+        setUser(completeUser);
+        setIsAdmin(completeUser.role === 'admin');
       } catch (error) {
           console.error("Failed to parse stored user data:", error);
           localStorage.removeItem('streamwatch_user'); // Clear invalid data
@@ -44,26 +49,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (username: string) => {
     // Mock user data including new fields
+    const role: UserRole = username === 'testuser' ? 'admin' : 'user'; // Assign admin role to testuser
     const userData: User = {
-        id: '1',
+        id: '1', // Use a more robust ID generation in a real app
         username: username,
-        name: 'Test User', // Example name
-        email: 'test@example.com', // Example email
-        plan: 'Premium' // Example plan
+        name: role === 'admin' ? 'Admin User' : 'Test User', // Example name based on role
+        email: `${username}@example.com`, // Example email
+        plan: role === 'admin' ? 'Enterprise' : 'Premium', // Example plan based on role
+        role: role,
     };
     setUser(userData);
+    setIsAdmin(role === 'admin');
     localStorage.setItem('streamwatch_user', JSON.stringify(userData));
     setLoading(false); // Ensure loading is false after login
   };
 
   const logout = () => {
     setUser(null);
+    setIsAdmin(false);
     localStorage.removeItem('streamwatch_user');
     setLoading(false); // Ensure loading is false after logout
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,33 +4,47 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle } from 'lucide-react'; // Corrected icons
+import { Camera, UserCircle, LayoutDashboard } from 'lucide-react'; // Added LayoutDashboard
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 
-const navItems = [
+const defaultNavItems = [
+  { href: '/cameras', label: 'Cameras', icon: Camera },
+  { href: '/profile', label: 'Profile', icon: UserCircle },
+];
+
+const adminNavItems = [
+  { href: '/admin', label: 'Admin', icon: LayoutDashboard }, // Admin dashboard link
   { href: '/cameras', label: 'Cameras', icon: Camera },
   { href: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth(); // Get admin status
+
+  const navItems = isAdmin ? adminNavItems : defaultNavItems; // Choose nav items based on role
 
   return (
     // Applied gradient background, increased blur, stronger shadow
     <nav className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-card/95 via-card/90 to-card/95 backdrop-blur-md border-t border-border/50 shadow-2xl md:hidden z-50 h-18">
-      <div className="flex justify-around items-center h-full max-w-md mx-auto px-2">
+      {/* Adjust grid columns based on number of items */}
+      <div className={cn(
+        "grid items-center h-full max-w-md mx-auto px-2",
+         `grid-cols-${navItems.length}` // Dynamically set grid columns
+      )}>
         {navItems.map((item) => {
            const isActive = item.href === '/cameras'
-            ? pathname.startsWith('/cameras') // Make cameras active for sub-routes like /cameras/environment/... and /cameras/[id]
-            : pathname === item.href;
+            ? pathname.startsWith('/cameras') // Make cameras active for sub-routes
+            : pathname.startsWith(item.href); // Use startsWith for admin route as well
 
           return (
             <Link href={item.href} key={item.href} passHref legacyBehavior>
               <Button
                 variant="ghost"
                 className={cn(
-                  "relative flex flex-col items-center justify-center h-full px-4 transition-all duration-300 ease-out transform focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none group overflow-hidden", // Added group and overflow-hidden
+                  "relative flex flex-col items-center justify-center h-full px-1 transition-all duration-300 ease-out transform focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none group overflow-hidden w-full", // Added w-full for grid layout
                   isActive
                     ? 'text-primary scale-105 font-semibold' // Simpler active state - primary color, slight scale, bold
                     : 'text-muted-foreground hover:text-foreground' // Hover to foreground for inactive

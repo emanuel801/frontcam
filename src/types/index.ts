@@ -1,9 +1,12 @@
+export type UserRole = 'admin' | 'user';
+
 export interface User {
   id: string;
   username: string;
   name?: string; // Optional name field
   email?: string; // Optional email field
   plan?: string; // Optional plan field
+  role?: UserRole; // Added role field
 }
 
 export interface Camera {

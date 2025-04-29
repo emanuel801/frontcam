@@ -5,12 +5,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, Loader2, ShieldCheck } from 'lucide-react';
+import { LogOut, Loader2, ShieldCheck, LayoutDashboard } from 'lucide-react'; // Added LayoutDashboard
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth(); // Get isAdmin flag
   const { toast } = useToast();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -41,14 +41,24 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo/Brand */}
-        <Link href="/cameras" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
+        <Link href={isAdmin ? "/admin" : "/cameras"} className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
            <ShieldCheck className="h-7 w-7" />
            <span className="text-xl font-bold tracking-tight">StreamWatch</span>
         </Link>
 
-        {/* Desktop Logout Button */}
+        {/* Desktop Controls */}
         {user && (
-          <div className="hidden md:block"> {/* Hide on mobile, show on medium screens and up */}
+          <div className="hidden md:flex items-center gap-4"> {/* Use flex container for buttons */}
+             {/* Admin Dashboard Link */}
+             {isAdmin && (
+                 <Link href="/admin" passHref>
+                     <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center gap-1.5">
+                         <LayoutDashboard className="h-4 w-4"/> Admin
+                     </Button>
+                 </Link>
+             )}
+
+            {/* Logout Button */}
             <Button
               onClick={handleLogout}
               variant="ghost" // Use ghost for a less intrusive look in the header
@@ -70,7 +80,8 @@ export default function Header() {
         )}
 
          {/* Mobile placeholder - keeps spacing consistent, can add menu trigger later */}
-         <div className="md:hidden w-10 h-10"></div>
+         {!user && <div className="w-10 h-10 md:hidden"></div> /* Show placeholder only if no user */}
+         {user && <div className="w-10 h-10 md:hidden"></div> /* Placeholder if user exists */}
       </div>
     </header>
   );
