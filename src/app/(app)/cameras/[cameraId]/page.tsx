@@ -47,8 +47,8 @@ export default function CameraPlayerPage() {
 
    // Effect to set the initial stream URL when camera data loads or changes
    useEffect(() => {
-       if (camera?.streamUrl && !currentStreamUrl) {
-           console.log("Setting initial stream URL:", camera.streamUrl);
+       if (camera?.streamUrl && !currentStreamUrl && !isLoadingSearch) { // Don't reset to live if a search is loading/succeeded
+           console.log("Setting initial live stream URL:", camera.streamUrl);
            setCurrentStreamUrl(camera.streamUrl); // Set to live stream initially
        }
        // If camera data becomes null/undefined (e.g., error), clear the URL
@@ -56,19 +56,22 @@ export default function CameraPlayerPage() {
            setCurrentStreamUrl(null);
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [camera, isLoadingCamera]); // Run when camera data or loading state changes
+   }, [camera, isLoadingCamera]); // Run when camera data or loading state changes, but respect search results
 
   // Determine the correct back link based on camera's environment
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
 
   // Mutation for fetching stream URL based on timestamp
   const { mutate: searchTimestamp } = useMutation({
-    mutationFn: async ({ timestamp }: { timestamp: number }) => {
+    // Update mutation function signature to accept start and end timestamps
+    mutationFn: async ({ startTimestamp, endTimestamp }: { startTimestamp: number, endTimestamp: number }) => {
         if (!cameraId) throw new Error("Camera ID is missing");
-        console.log(`Searching timestamp ${timestamp} for camera ${cameraId}`);
+        // Log both timestamps for potential future use, but current service only uses start
+        console.log(`Searching from ${startTimestamp} to ${endTimestamp} for camera ${cameraId}`);
         setIsLoadingSearch(true);
         // Keep the current video player visible but show overlay
-        return getStreamUrlForTimestamp(cameraId, timestamp);
+        // Pass only the start timestamp for now as per current service
+        return getStreamUrlForTimestamp(cameraId, startTimestamp);
     },
     onSuccess: (newUrl) => {
         console.log("Timestamp search successful, new URL:", newUrl);
@@ -100,13 +103,11 @@ export default function CameraPlayerPage() {
   });
 
 
-  const handleSearch = (date: Date, time: string) => {
-    // Combine date and time, then convert to timestamp (seconds since epoch)
-    const [hours, minutes] = time.split(':').map(Number);
-    const searchDateTime = new Date(date);
-    searchDateTime.setHours(hours, minutes, 0, 0);
-    const timestampInSeconds = Math.floor(searchDateTime.getTime() / 1000);
-    searchTimestamp({ timestamp: timestampInSeconds });
+  // Updated handleSearch to accept start and end dates
+  const handleSearch = (startDateTime: Date, endDateTime: Date) => {
+    const startTimestampInSeconds = Math.floor(startDateTime.getTime() / 1000);
+    const endTimestampInSeconds = Math.floor(endDateTime.getTime() / 1000);
+    searchTimestamp({ startTimestamp: startTimestampInSeconds, endTimestamp: endTimestampInSeconds });
   };
 
   // Show loading spinner for the initial camera detail fetch
