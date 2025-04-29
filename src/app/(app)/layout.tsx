@@ -1,7 +1,9 @@
+
 "use client";
 
 import React from 'react';
 import BottomNav from '@/components/layout/BottomNav';
+import Header from '@/components/layout/Header'; // Import the new Header component
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -33,11 +35,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Increased padding-bottom to pb-24 to avoid overlap with BottomNav */}
-      <main className="flex-grow container mx-auto px-4 py-6 pb-24 md:py-8">
+      <Header /> {/* Add the Header component here */}
+      {/* Adjusted padding: pt-20 for header space, pb-24 for bottom nav */}
+      <main className="flex-grow container mx-auto px-4 pt-20 pb-24 md:pt-8 md:pb-8">
         {children}
       </main>
-      <BottomNav />
+      <BottomNav /> {/* Keep BottomNav at the end */}
     </div>
   );
 }
+
