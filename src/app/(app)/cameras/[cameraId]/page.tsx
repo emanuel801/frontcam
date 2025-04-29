@@ -9,13 +9,14 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower } from 'lucide-react';
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download } from 'lucide-react'; // Added CameraIcon, Download
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns'; // To display timestamp
+import Image from 'next/image'; // For snapshot preview
 
 export default function CameraPlayerPage() {
   const params = useParams();
@@ -23,6 +24,7 @@ export default function CameraPlayerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null); // Ref for snapshot canvas
 
   // Fetch camera data
   const { data: camera, isLoading: isLoadingCamera, isError: isErrorCamera, error: errorCamera, refetch: refetchCamera } = useQuery<Camera | undefined>({
@@ -43,6 +45,7 @@ export default function CameraPlayerPage() {
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null); // State for captured snapshot
 
    // Effect to set the initial stream URL (Live feed)
    useEffect(() => {
@@ -59,30 +62,29 @@ export default function CameraPlayerPage() {
 
   const backLink = camera ? `/cameras/environment/${camera.environmentId}` : '/cameras';
 
-  // Mutation for timestamp search (still uses single timestamp for now)
+  // Mutation for timestamp search
   const { mutate: searchTimestampMutation } = useMutation({
-    mutationFn: async ({ timestamp }: { timestamp: number }) => { // Still uses single timestamp
+    mutationFn: async ({ startDateTime, endDateTime }: { startDateTime: Date, endDateTime: Date }) => {
         if (!cameraId) throw new Error("Camera ID is missing");
-        console.log(`Searching for timestamp ${timestamp} for camera ${cameraId}`);
+        // Use start time for now, potentially pass range later
+        const startTimestampInSeconds = Math.floor(startDateTime.getTime() / 1000);
+        console.log(`Searching for recordings from ${startDateTime} to ${endDateTime} (using start timestamp ${startTimestampInSeconds}) for camera ${cameraId}`);
         setIsLoadingSearch(true);
-        // Reset playback state before loading new stream (browser will handle this)
         // NOTE: In a real implementation, the backend would handle the time range.
-        // Here, we just use the start timestamp for demonstration.
-        return getStreamUrlForTimestamp(cameraId, timestamp);
+        return getStreamUrlForTimestamp(cameraId, startTimestampInSeconds);
     },
     onSuccess: (newUrl, variables) => {
         console.log("Timestamp search successful, new URL:", newUrl);
         setCurrentStreamUrl(newUrl);
-        // Convert seconds back to Date object for display (using the start timestamp)
-        const timestampDate = new Date(variables.timestamp * 1000);
-        setSearchedTimestamp(timestampDate);
+        setSearchedTimestamp(variables.startDateTime); // Store start time
+        setSnapshotUrl(null); // Clear snapshot when searching for new recording
         setIsLoadingSearch(false);
         toast({
           title: "Recording Found",
-          description: `Loading video from ${format(timestampDate, 'PPpp')}.`, // Displaying start time
+          description: `Loading video starting from ${format(variables.startDateTime, 'PPpp')}.`,
           className: "bg-green-100 border-green-300 text-green-800",
         });
-         // Browser controls will handle play state
+         // Let browser controls handle play
          setTimeout(() => {
             videoRef.current?.play().catch(err => console.warn("Autoplay after search prevented:", err));
         }, 500);
@@ -100,6 +102,7 @@ export default function CameraPlayerPage() {
              console.log("Search failed, reverting to live stream URL:", camera.streamUrl);
              setCurrentStreamUrl(camera.streamUrl);
              setSearchedTimestamp(null); // Back to live mode
+             setSnapshotUrl(null); // Clear snapshot
          } else {
              setCurrentStreamUrl(null);
          }
@@ -107,13 +110,9 @@ export default function CameraPlayerPage() {
     },
   });
 
-  // Updated handleSearch to accept start and end dateTime, but currently only uses start.
   const handleSearch = (startDateTime: Date, endDateTime: Date) => {
     console.log(`Search requested for range: ${startDateTime} - ${endDateTime}`);
-    // TODO: In a real application, you would likely pass both start and end timestamps
-    // to the backend mutation. For now, we only use the start time for getStreamUrlForTimestamp.
-    const startTimestampInSeconds = Math.floor(startDateTime.getTime() / 1000);
-    searchTimestampMutation({ timestamp: startTimestampInSeconds });
+    searchTimestampMutation({ startDateTime, endDateTime });
   };
 
    const switchToLive = () => {
@@ -121,6 +120,7 @@ export default function CameraPlayerPage() {
           console.log("Switching back to live stream.");
           setCurrentStreamUrl(camera.streamUrl);
           setSearchedTimestamp(null);
+          setSnapshotUrl(null); // Clear snapshot
           toast({
               title: "Live Feed",
               description: "Switched back to the live camera feed.",
@@ -131,6 +131,63 @@ export default function CameraPlayerPage() {
            }, 500);
       }
    };
+
+   const handleCaptureSnapshot = () => {
+        const videoElement = videoRef.current;
+        const canvasElement = canvasRef.current;
+
+        if (!videoElement || !canvasElement || videoElement.readyState < videoElement.HAVE_CURRENT_DATA) {
+             toast({
+                title: "Cannot Capture Snapshot",
+                description: "Video is not ready or unavailable.",
+                variant: "destructive",
+             });
+             return;
+        }
+
+        try {
+            // Set canvas dimensions to video's actual dimensions
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+
+            const ctx = canvasElement.getContext('2d');
+            if (!ctx) {
+                 throw new Error('Failed to get canvas context.');
+            }
+
+            // Draw the current video frame onto the canvas
+            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+            // Get the image data URL from the canvas (JPEG format)
+            const dataUrl = canvasElement.toDataURL('image/jpeg', 0.9); // Quality 0.9
+            setSnapshotUrl(dataUrl);
+
+             toast({
+                title: "Snapshot Captured",
+                description: "Snapshot saved. You can download it below.",
+             });
+
+        } catch (error) {
+             console.error('Error capturing snapshot:', error);
+             toast({
+                title: "Snapshot Failed",
+                description: `Could not capture snapshot: ${(error as Error).message}`,
+                variant: "destructive",
+             });
+             setSnapshotUrl(null);
+        }
+    };
+
+    const handleDownloadSnapshot = () => {
+        if (!snapshotUrl) return;
+        const link = document.createElement('a');
+        link.href = snapshotUrl;
+        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+        link.download = `snapshot_${camera?.name.replace(/\s+/g, '_') || cameraId}_${timestamp}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
 
   // --- Render Logic ---
@@ -195,9 +252,8 @@ export default function CameraPlayerPage() {
             </div>
          </div>
 
-         {/* Enhanced Status Indicator (Live or Recording Time) */}
+         {/* Status Indicator (Live or Recording Time) - Moved outside player */}
          <div className="flex justify-start mb-3">
-             {/* Using Tailwind classes for background, color, shadow, and rounded corners */}
              <div className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md",
                 isLive ? "bg-red-600/80 text-white" : "bg-blue-600/80 text-white"
@@ -208,7 +264,7 @@ export default function CameraPlayerPage() {
                     </>
                 ) : (
                    <>
-                       <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'dd/MM/yyyy HH:mm') : '...'} {/* Updated format */}
+                       <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'dd/MM/yyyy HH:mm') : '...'}
                    </>
                 )}
              </div>
@@ -216,14 +272,13 @@ export default function CameraPlayerPage() {
 
         {/* Enhanced Video Player Area */}
         <div className="relative aspect-video w-full max-w-5xl mx-auto bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-border/60">
-            {/* Status Indicator Removed from here */}
-
             {currentStreamUrl ? (
                  <VideoPlayer
                     key={currentStreamUrl} // Force re-mount on URL change
                     src={currentStreamUrl}
                     videoRef={videoRef} // Pass the ref
                     controls={true} // Use default browser controls
+                    autoPlay={true} // Enable autoplay
                  />
             ) : (
                  <div className="absolute inset-0 flex flex-col justify-center items-center text-muted-foreground bg-gradient-to-br from-muted/70 to-muted/80 backdrop-blur-sm">
@@ -242,9 +297,12 @@ export default function CameraPlayerPage() {
             )}
         </div>
 
-         {/* Enhanced "Go Live" Button */}
-         {!isLive && (
-             <div className="flex justify-center mt-4">
+        {/* Hidden canvas for snapshot */}
+        <canvas ref={canvasRef} className="hidden"></canvas>
+
+         {/* Control Buttons Area (Go Live, Capture Snapshot) */}
+         <div className="flex justify-center items-center gap-4 mt-4">
+             {!isLive && (
                  <Button
                      onClick={switchToLive}
                      variant="outline"
@@ -254,11 +312,44 @@ export default function CameraPlayerPage() {
                  >
                      <RadioTower className="h-4 w-4" /> Go Live
                  </Button>
-             </div>
+             )}
+              <Button
+                  onClick={handleCaptureSnapshot}
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-secondary/80 flex items-center gap-1.5"
+                  disabled={isLoadingSearch || !currentStreamUrl} // Disable if loading or no stream
+              >
+                  <CameraIcon className="h-4 w-4" /> Capture Snapshot
+              </Button>
+         </div>
+
+         {/* Snapshot Preview Area */}
+         {snapshotUrl && (
+            <div className="mt-6 flex flex-col items-center">
+                <h3 className="text-lg font-semibold mb-3 text-primary">Snapshot Preview</h3>
+                <div className="relative w-full max-w-sm rounded-lg overflow-hidden shadow-lg border border-border">
+                    <Image
+                        src={snapshotUrl}
+                        alt="Captured snapshot"
+                        width={canvasRef.current?.width || 320} // Use canvas width or default
+                        height={canvasRef.current?.height || 180} // Use canvas height or default
+                        layout="responsive"
+                        unoptimized // Data URLs don't need optimization
+                    />
+                </div>
+                <Button
+                    onClick={handleDownloadSnapshot}
+                    variant="link"
+                    className="mt-3 text-accent flex items-center gap-1.5"
+                >
+                    <Download className="h-4 w-4"/> Download Snapshot
+                </Button>
+            </div>
          )}
 
          {/* Enhanced DateTimeSearch component styling */}
-         <div className="flex justify-center px-2 mt-4">
+         <div className="flex justify-center px-2 mt-6">
             <DateTimeSearch
                 onSearch={handleSearch}
                 isLoading={isLoadingSearch}
@@ -269,3 +360,4 @@ export default function CameraPlayerPage() {
     </div>
   );
 }
+

@@ -3,26 +3,27 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { AlertCircle, WifiOff } from 'lucide-react'; // Removed Loader2 and PlayCircle
+import { AlertCircle, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// Removed LoadingSpinner import as the custom overlay is removed
+
 
 interface VideoPlayerProps {
   src: string | null; // Allow null src for initial state
   videoRef?: React.RefObject<HTMLVideoElement>; // Optional external ref
   controls?: boolean; // Option to enable/disable default controls
+  autoPlay?: boolean; // Option for autoplay
 }
 
 // Simplified state as browser controls handle play/pause/loading UI
 type PlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, controls = true }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, controls = true, autoPlay = false }) => {
   const internalRef = useRef<HTMLVideoElement>(null);
   const videoRef = externalRef || internalRef; // Use external ref if provided
   const hlsRef = useRef<Hls | null>(null);
   const [status, setStatus] = useState<PlayerStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // No need for isUserInteracted if using default controls primarily
+
 
   const cleanupHls = () => {
       if (hlsRef.current) {
@@ -43,7 +44,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       cleanupHls();
 
       console.log("Initializing HLS for:", streamSrc);
-      setStatus('loading'); // Set loading status internally, but don't show overlay
+      setStatus('loading'); // Keep track internally, but hide visual overlay
       setErrorMessage(null);
 
       const hls = new Hls({
@@ -74,7 +75,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
           console.log("Manifest parsed, HLS ready.");
           setStatus('ready');
-          videoElement.play().catch(err => console.warn("Autoplay prevented:", err));
+          if (autoPlay) {
+             videoElement.play().catch(err => console.warn("Autoplay prevented:", err));
+          }
       });
 
        hls.on(Hls.Events.ERROR, (event, data) => {
@@ -82,7 +85,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
            let dataString = 'Error details unavailable';
            try {
                dataString = JSON.stringify(data, (key, value) => {
-                   // Handle potential circular references or large objects if necessary
                    if (key === 'frag' || key === 'level' || key === 'buffer') return '[ HLS Segment Info ]';
                    if (value instanceof Event) return '[ Event Object ]';
                    return value;
@@ -155,7 +157,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
          if (status === 'loading') {
              console.log("Video can play.");
              setStatus('ready');
-              videoElement.play().catch(err => console.warn("Autoplay after canplay prevented:", err));
+             if (autoPlay) {
+                 videoElement.play().catch(err => console.warn("Autoplay after canplay prevented:", err));
+             }
          }
      };
        const handleWaiting = () => {
@@ -187,7 +191,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
           videoElement.src = src;
           videoElement.load();
           videoElement.addEventListener('loadedmetadata', () => {
-              videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+              if(autoPlay) {
+                 videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+              }
           });
         } else {
           console.error("HLS is not supported in this browser.");
@@ -209,13 +215,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             videoElement.removeEventListener('waiting', handleWaiting);
              videoElement.removeEventListener('playing', handlePlaying);
               videoElement.removeEventListener('loadedmetadata', () => {
-                videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+                if(autoPlay) {
+                  videoElement.play().catch(err => console.warn("Native HLS autoplay prevented:", err));
+                }
               });
         }
         setStatus('idle');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, videoRef]);
+  }, [src, videoRef, autoPlay]); // Include autoPlay in dependencies
 
 
   return (
@@ -225,23 +233,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
             controls={controls}
             className={cn(
                 "w-full h-full object-contain",
-                // Keep video visible even during loading/error states
-                // Opacity is handled by the error overlay if needed
                  status === 'error' && "opacity-80" // Slightly dim video on error
             )}
             aria-label="Camera Stream Player"
             playsInline
-            muted={false} // Start unmuted
-            autoPlay // Add autoPlay attribute
+            muted={false} // Start unmuted by default, can be changed
+            autoPlay={autoPlay} // Respect the prop
+            crossOrigin="anonymous" // Needed for canvas snapshot capture
         />
 
-        {/* Loading Overlay - REMOVED */}
-        {/* {status === 'loading' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 pointer-events-none backdrop-blur-sm z-10">
-                <LoadingSpinner size={40} className="text-white/80" />
-                <p className="mt-3 text-sm font-medium text-white/80 animate-pulse">Loading stream...</p>
-            </div>
-        )} */}
 
         {/* Enhanced Error Overlay */}
          {status === 'error' && (
