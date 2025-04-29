@@ -8,14 +8,19 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth(); // Get isAdmin status
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/cameras');
+        // Redirect based on role
+      if (isAdmin) {
+        router.replace('/admin'); // Admins go to admin dashboard
+      } else {
+        router.replace('/cameras'); // Regular users go to cameras list
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, isAdmin, router]);
 
 
   if (loading) {
@@ -28,9 +33,16 @@ export default function Home() {
 
 
   if (!user) {
+    // If not loading and no user, show the login page
     return <LoginPage />;
   }
 
-  // Should not reach here if user is logged in due to redirection
-  return null;
+  // Should not reach here if user is logged in due to redirection logic in useEffect
+  // Render loading state while redirection is happening or if useEffect hasn't run yet
+  return (
+      <div className="flex justify-center items-center h-screen">
+        <LoadingSpinner size={48} />
+        <p className="ml-2">Redirecting...</p>
+      </div>
+  );
 }

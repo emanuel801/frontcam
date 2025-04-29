@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect } from 'react';
@@ -13,10 +12,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
  const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      // If not loading and not an admin, redirect away from any admin page
-      console.warn("Non-admin user attempting to access admin area. Redirecting...");
-      router.replace('/cameras'); // Or '/' for login page if user is null
+    if (!loading) {
+        if (!user) {
+            // If not loading and no user, redirect to login
+             console.warn("No user found. Redirecting to login...");
+            router.replace('/');
+        } else if (!isAdmin) {
+            // If not loading, user exists, but is NOT admin, redirect away
+             console.warn("Non-admin user attempting to access admin area. Redirecting...");
+             router.replace('/cameras'); // Or '/' for login page if preferred
+        }
     }
   }, [user, isAdmin, loading, router]);
 
@@ -29,12 +34,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-   if (!isAdmin) {
-    // Render nothing while redirecting
-    return null;
+   // If checks above passed, but user somehow became non-admin or null during render/redirect
+   if (!user || !isAdmin) {
+    // Render loading/redirecting state or null
+    return (
+         <div className="flex justify-center items-center h-screen bg-background">
+            <LoadingSpinner size={48} />
+            <p className="ml-4 text-muted-foreground">Redirecting...</p>
+         </div>
+    );
   }
 
-  // User is an admin, render the admin layout
+  // User is confirmed to be an admin, render the admin layout
   return (
     <div className="flex flex-col min-h-screen bg-muted/40"> {/* Slightly different bg for admin */}
       <Header /> {/* Use the same header */}

@@ -6,7 +6,7 @@ export interface User {
   name?: string; // Optional name field
   email?: string; // Optional email field
   plan?: string; // Optional plan field
-  role?: UserRole; // Added role field
+  role: UserRole; // Added role field (made mandatory)
 }
 
 export interface Camera {

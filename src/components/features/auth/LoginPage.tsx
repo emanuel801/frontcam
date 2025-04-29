@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, ShieldCheck, Loader2 } from 'lucide-react'; // Changed icon, added Loader2
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter(); // Get router instance
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +35,20 @@ export default function LoginPage() {
     // Simulate API call
     setTimeout(() => {
       // Replace with actual authentication logic
-      if (username === 'testuser' && password === 'password') {
-        login(username);
+      // For demo: hardcode credentials
+      if ((username === 'testuser' || username === 'user') && password === 'password') {
+        const userRole = login(username); // login function returns the role
          toast({
           title: "Welcome!",
           description: "Logged in successfully.",
         });
-        // No need to set isLoading to false here, as redirection will happen
+        // Redirect based on role
+        if (userRole === 'admin') {
+            router.replace('/admin'); // Redirect admin to admin dashboard
+        } else {
+            router.replace('/cameras'); // Redirect regular user to cameras page
+        }
+        // No need to set isLoading to false here, as redirection happens
       } else {
          toast({
           title: "Login Failed",
@@ -69,7 +78,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="e.g., testuser"
+                placeholder="e.g., testuser / user" // Updated placeholder
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -83,7 +92,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="•••••••• (use 'password')" // Updated placeholder
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -110,7 +119,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
          <CardFooter className="text-center text-xs text-muted-foreground pt-4 pb-6"> {/* Adjusted padding */}
-            <p>Demo: Use <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">testuser</code> / <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">password</code></p>
+            <p>Demo: Use <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">testuser</code> (admin) or <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">user</code> (regular) / <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">password</code></p>
         </CardFooter>
       </Card>
     </div>

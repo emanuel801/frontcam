@@ -3,10 +3,11 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import type { User, UserRole } from '@/types'; // Import UserRole
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useRouter } from 'next/navigation'; // Import useRouter for redirection
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string) => void;
+  login: (username: string) => UserRole; // Return the role for redirection handling
   logout: () => void;
   loading: boolean;
   isAdmin: boolean; // Convenience flag
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start loading initially
   const [isAdmin, setIsAdmin] = useState(false); // State for admin status
+  const router = useRouter(); // Use router inside provider if needed for complex logic, but prefer handling redirection in components
 
   useEffect(() => {
     // Simulate checking auth status on mount
@@ -26,13 +28,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const parsedUser: User = JSON.parse(storedUser);
         // Ensure all expected fields are present or provide defaults
+        // Crucially, validate or assign the role
+        const role: UserRole = parsedUser.role || (parsedUser.username === 'testuser' ? 'admin' : 'user');
         const completeUser: User = {
             id: parsedUser.id || '1',
             username: parsedUser.username || 'Unknown User',
-            name: parsedUser.name || 'Test User', // Add default name if missing
-            email: parsedUser.email || 'test@example.com', // Add default email if missing
-            plan: parsedUser.plan || 'Premium', // Add default plan if missing
-            role: parsedUser.role || (parsedUser.username === 'testuser' ? 'admin' : 'user'), // Assign role based on stored data or username
+            name: parsedUser.name || (role === 'admin' ? 'Admin User' : 'Test User'),
+            email: parsedUser.email || `${parsedUser.username || 'user'}@example.com`,
+            plan: parsedUser.plan || (role === 'admin' ? 'Enterprise' : 'Premium'),
+            role: role, // Assign determined role
         };
         setUser(completeUser);
         setIsAdmin(completeUser.role === 'admin');
@@ -47,8 +51,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 500); // Simulate network latency
   }, []);
 
-  const login = (username: string) => {
-    // Mock user data including new fields
+  const login = (username: string): UserRole => {
+    // Mock user data including new fields and role
     const role: UserRole = username === 'testuser' ? 'admin' : 'user'; // Assign admin role to testuser
     const userData: User = {
         id: '1', // Use a more robust ID generation in a real app
@@ -62,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(role === 'admin');
     localStorage.setItem('streamwatch_user', JSON.stringify(userData));
     setLoading(false); // Ensure loading is false after login
+    return role; // Return the role
   };
 
   const logout = () => {
@@ -69,6 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(false);
     localStorage.removeItem('streamwatch_user');
     setLoading(false); // Ensure loading is false after logout
+    router.push('/'); // Redirect to login page on logout
   };
 
   return (
