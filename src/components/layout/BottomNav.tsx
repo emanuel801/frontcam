@@ -4,13 +4,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, UserCircle, Home } from 'lucide-react'; // Added Home icon
+import { Camera, UserCircle } from 'lucide-react'; // Removed unused Home icon
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { href: '/cameras', label: 'Cameras', icon: Camera }, // Points to environments list now
-  // { href: '/environments', label: 'Environments', icon: LayoutGrid }, // This route is removed/merged into cameras
+  { href: '/cameras', label: 'Cameras', icon: Camera },
   { href: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
@@ -18,42 +17,46 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    // Added backdrop-blur-sm and bg-opacity-95 for subtle transparency effect (optional)
-    // Increased height slightly to h-18 for better touch targets
-    <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border shadow-lg md:hidden z-50 h-18">
-      {/* Adjusted justify-around and padding */}
+    // Applied gradient background, increased blur, stronger shadow
+    <nav className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-card/95 via-card/90 to-card/95 backdrop-blur-md border-t border-border/50 shadow-2xl md:hidden z-50 h-18">
       <div className="flex justify-around items-center h-full max-w-md mx-auto px-2">
         {navItems.map((item) => {
-          // Improved active state check for sub-pages
-           // Special check for cameras to include sub-paths like /cameras/environment/* and /cameras/[cameraId]
            const isActive = item.href === '/cameras'
-            ? pathname.startsWith('/cameras') // Covers /cameras and /cameras/environment/* and /cameras/[cameraId]/*
+            ? pathname.startsWith('/cameras')
             : pathname === item.href;
-
 
           return (
             <Link href={item.href} key={item.href} passHref legacyBehavior>
               <Button
                 variant="ghost"
                 className={cn(
-                  "flex flex-col items-center justify-center h-full px-3 transition-all duration-200 ease-in-out transform hover:scale-105 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent", // Added hover:bg-transparent globally
+                  "relative flex flex-col items-center justify-center h-full px-4 transition-all duration-300 ease-out transform focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none group overflow-hidden", // Added group and overflow-hidden
                   isActive
-                    ? 'text-primary scale-110 font-medium border-t-2 border-primary' // Enhanced active state: bigger, primary color, top border
-                    : 'text-muted-foreground hover:text-muted-foreground' // Only change text color on hover for inactive
+                    ? 'text-primary scale-105 font-semibold' // Simpler active state - primary color, slight scale, bold
+                    : 'text-muted-foreground hover:text-foreground' // Hover to foreground for inactive
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {/* Slightly larger icon */}
-                <item.icon className={cn(
-                    "h-7 w-7 mb-0.5", // Adjusted size and margin
-                    isActive ? "text-primary" : ""
+                 {/* Active Indicator (subtle line) */}
+                 <span
+                    className={cn(
+                        "absolute top-0 left-1/2 -translate-x-1/2 h-1 w-10 bg-primary rounded-b-full transition-all duration-300 ease-out",
+                        isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0" // Animate in/out
                     )}
                     aria-hidden="true"
-                    strokeWidth={isActive ? 2.5 : 2} // Thicker stroke when active
+                 />
+
+                <item.icon
+                    className={cn(
+                        "h-6 w-6 mb-1 transition-transform duration-200 group-hover:scale-110", // Slightly smaller icon, hover scale
+                        isActive ? "text-primary" : "" // Icon color matches text
+                    )}
+                    aria-hidden="true"
+                    strokeWidth={isActive ? 2.25 : 1.75} // Slightly adjusted stroke
                  />
                 <span className={cn(
                     "text-xs",
-                     isActive ? "font-semibold" : "font-normal" // Bold text when active
+                    // Font weight handled by parent className
                 )}>{item.label}</span>
               </Button>
             </Link>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, ShieldAlert } from 'lucide-react'; // Added icons
+import { LogIn, ShieldCheck, Loader2 } from 'lucide-react'; // Changed icon, added Loader2
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -36,9 +36,8 @@ export default function LoginPage() {
       if (username === 'testuser' && password === 'password') {
         login(username);
          toast({
-          title: "Success",
-          description: "Logged in successfully!",
-          // variant: "success", // Consider adding a success variant to toast
+          title: "Welcome!",
+          description: "Logged in successfully.",
         });
         // No need to set isLoading to false here, as redirection will happen
       } else {
@@ -53,62 +52,65 @@ export default function LoginPage() {
   };
 
   return (
-    // Added px-4 for padding on smallest screens
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-muted/50 to-background px-4 py-8">
-        {/* Adjusted max-w-sm and added w-full for better mobile fit, rounded-lg */}
-      <Card className="w-full max-w-sm shadow-xl rounded-lg border border-border bg-card">
-        <CardHeader className="space-y-1 text-center">
-          <ShieldAlert className="mx-auto h-10 w-10 text-primary mb-2" /> {/* Security Icon */}
-          <CardTitle className="text-2xl font-bold text-primary">StreamWatch Secure Login</CardTitle>
-          <CardDescription className="text-muted-foreground">Enter credentials to access your cameras.</CardDescription>
+    // Changed background gradient direction and colors slightly
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-background via-muted/30 to-background px-4 py-12">
+        {/* Enhanced card shadow and subtle border */}
+      <Card className="w-full max-w-sm shadow-xl rounded-xl border border-border/50 bg-card/95 backdrop-blur-sm">
+        <CardHeader className="space-y-2 text-center pt-8 pb-4">
+          {/* Larger icon, primary color */}
+          <ShieldCheck className="mx-auto h-14 w-14 text-primary mb-3" />
+          <CardTitle className="text-3xl font-bold text-primary">StreamWatch</CardTitle>
+          <CardDescription className="text-muted-foreground !mt-1">Secure access to your cameras</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5"> {/* Reduced spacing */}
-              <Label htmlFor="username">Username</Label>
+        <CardContent className="px-6 py-4">
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="username" className="font-medium">Username</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="e.g., testuser" // Placeholder example
+                placeholder="e.g., testuser"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 aria-label="Username"
-                className="rounded-md" // Ensure inputs have rounded corners
+                className="rounded-lg focus:border-primary" // Rounded, focus style
                 autoComplete="username"
               />
             </div>
-            <div className="space-y-1.5"> {/* Reduced spacing */}
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password"  className="font-medium">Password</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••" // Password placeholder
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 aria-label="Password"
-                className="rounded-md" // Ensure inputs have rounded corners
+                className="rounded-lg focus:border-primary" // Rounded, focus style
                 autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md shadow transition-shadow hover:shadow-md" disabled={isLoading}>
+            {/* Enhanced button styling */}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg py-3 text-base font-semibold shadow-lg transition-all duration-300 hover:shadow-primary/30" disabled={isLoading}>
              {isLoading ? (
                 <>
-                    <LogIn className="mr-2 h-4 w-4 animate-spin" /> {/* Replace with spinner if preferred */}
+                    {/* Use Loader2 for a better spinning animation */}
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Authenticating...
                 </>
                 ) : (
                 <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Sign In
                 </>
                 )}
             </Button>
           </form>
         </CardContent>
-         <CardFooter className="text-center text-xs text-muted-foreground pt-4"> {/* Added padding-top */}
-            <p>Demo: Use <code className="font-mono bg-muted px-1 rounded">testuser</code> / <code className="font-mono bg-muted px-1 rounded">password</code></p>
+         <CardFooter className="text-center text-xs text-muted-foreground pt-4 pb-6"> {/* Adjusted padding */}
+            <p>Demo: Use <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">testuser</code> / <code className="font-mono bg-muted px-1.5 py-0.5 rounded-sm">password</code></p>
         </CardFooter>
       </Card>
     </div>

@@ -4,27 +4,29 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  /* Add a subtle gradient for visual interest */
+  @apply bg-gradient-to-br from-background via-muted/10 to-background;
 }
 
 @layer base {
   :root {
-    --background: 240 0% 93%; /* Light Gray #EEEEEE */
+    --background: 240 0% 96%; /* Slightly lighter Light Gray */
     --foreground: 240 10% 10%; /* Darker Gray Text */
-    --card: 240 0% 98%; /* Lighter Gray */
+    --card: 240 0% 100%; /* White card background */
     --card-foreground: 240 10% 10%;
-    --popover: 240 0% 98%; /* Lighter Gray */
+    --popover: 240 0% 100%; /* White popover */
     --popover-foreground: 240 10% 10%;
     --primary: 235 62% 29%; /* Dark Blue #1A237E */
     --primary-foreground: 0 0% 98%; /* White */
     --secondary: 240 0% 98%; /* Lighter Gray */
     --secondary-foreground: 240 10% 10%;
-    --muted: 240 0% 85%; /* Slightly darker gray */
-    --muted-foreground: 0 0% 45%;
+    --muted: 240 0% 90%; /* Adjusted Muted gray */
+    --muted-foreground: 0 0% 40%; /* Adjusted Muted foreground */
     --accent: 187 100% 38%; /* Teal #00ACC1 */
     --accent-foreground: 0 0% 98%; /* White */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 0% 80%; /* Gray Border */
+    --border: 240 0% 85%; /* Adjusted Gray Border */
     --input: 240 0% 98%; /* Lighter Gray for inputs */
     --ring: 187 100% 38%; /* Teal */
     --chart-1: 12 76% 61%;
@@ -32,7 +34,7 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Increased border radius slightly */
     --sidebar-background: 240 0% 98%;
     --sidebar-foreground: 240 10% 10%;
     --sidebar-primary: 235 62% 29%; /* Dark Blue */
@@ -43,37 +45,37 @@ body {
     --sidebar-ring: 187 100% 38%; /* Teal */
   }
   .dark {
-    --background: 240 10% 10%; /* Dark Background */
+    --background: 240 10% 3.9%; /* Very Dark Background */
     --foreground: 0 0% 98%; /* White Text */
-    --card: 240 10% 15%; /* Darker Card */
+    --card: 240 10% 10%; /* Dark Card */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 15%; /* Darker Popover */
+    --popover: 240 10% 10%; /* Dark Popover */
     --popover-foreground: 0 0% 98%;
-    --primary: 235 62% 70%; /* Lighter Dark Blue for Dark Mode */
+    --primary: 235 62% 65%; /* Lighter Dark Blue for Dark Mode */
     --primary-foreground: 240 10% 10%; /* Dark Text on Primary */
-    --secondary: 240 10% 20%; /* Darker Secondary */
+    --secondary: 240 10% 15%; /* Darker Secondary */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 10% 25%; /* Darker Muted */
+    --muted: 240 10% 20%; /* Darker Muted */
     --muted-foreground: 0 0% 63.9%;
     --accent: 187 100% 45%; /* Brighter Teal for Dark Mode */
     --accent-foreground: 240 10% 10%; /* Dark Text on Accent */
     --destructive: 0 62.8% 50.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 10% 30%; /* Darker Border */
-    --input: 240 10% 20%; /* Darker Input */
+    --border: 240 10% 25%; /* Darker Border */
+    --input: 240 10% 15%; /* Darker Input */
     --ring: 187 100% 45%; /* Brighter Teal */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 10% 10%;
+    --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 235 62% 70%; /* Lighter Dark Blue */
+    --sidebar-primary: 235 62% 65%; /* Lighter Dark Blue */
     --sidebar-primary-foreground: 240 10% 10%;
     --sidebar-accent: 187 100% 45%; /* Brighter Teal */
     --sidebar-accent-foreground: 240 10% 10%;
-    --sidebar-border: 240 10% 30%;
+    --sidebar-border: 240 10% 25%;
     --sidebar-ring: 187 100% 45%; /* Brighter Teal */
   }
 }
@@ -84,6 +86,8 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /* Ensure gradient covers full height */
+    min-height: 100vh;
   }
 }
 
@@ -95,4 +99,32 @@ html {
 /* Basic transition for theme changes */
 body {
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom focus ring style for better visibility */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.8);
+  outline-offset: 2px;
+}
+
+/* Improve scrollbar styling (optional, Webkit specific) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.6);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
 }

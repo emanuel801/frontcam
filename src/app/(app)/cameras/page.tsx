@@ -21,7 +21,8 @@ export default function EnvironmentListPage() {
   if (isLoading) {
     return (
        <div className="flex justify-center items-center h-[calc(100vh-10rem)]">
-        <LoadingSpinner size={48} />
+         {/* Larger spinner for initial load */}
+        <LoadingSpinner size={64} />
       </div>
     );
   }
@@ -29,9 +30,9 @@ export default function EnvironmentListPage() {
   if (isError) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-         <WifiOff className="h-4 w-4"/>
-          <AlertTitle>Error</AlertTitle>
+        <Alert variant="destructive" className="rounded-lg shadow-md">
+         <WifiOff className="h-5 w-5"/>
+          <AlertTitle className="font-semibold">Error Loading Data</AlertTitle>
           <AlertDescription>
             Failed to load environments. Please check your connection and try again. {(error as Error)?.message}
           </AlertDescription>
@@ -42,37 +43,43 @@ export default function EnvironmentListPage() {
 
 
   return (
-    <div className="space-y-6">
-       <div className="flex items-center space-x-2 mb-6">
-         <Home className="h-8 w-8 text-primary" />
-         <h1 className="text-3xl font-bold text-primary">Camera Environments</h1>
+    <div className="space-y-8"> {/* Increased spacing */}
+       <div className="flex items-center space-x-3 mb-6 border-b border-border pb-4"> {/* Title styling */}
+         <Home className="h-10 w-10 text-primary" />
+         <div>
+             <h1 className="text-3xl font-bold tracking-tight text-primary">Camera Environments</h1>
+             <p className="text-muted-foreground mt-1">Select an area to view live cameras.</p>
+         </div>
        </div>
-      <p className="text-muted-foreground">Select an environment to view its cameras.</p>
-      {/* Display environments as cards */}
-      <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 xl:grid-cols-4">
+
+      {/* Display environments as cards with enhanced styling */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {/* Adjusted gap */}
         {environments?.map((env) => (
           // Link to the specific environment's camera page
           <Link href={`/cameras/environment/${env.id}`} key={env.id} passHref legacyBehavior>
             <a className="group block">
-                <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col bg-card border border-border hover:border-primary">
-                <CardHeader className="relative h-40 w-full p-0 bg-muted">
+                {/* Enhanced Card styling: more prominent shadow, subtle border */}
+                <Card className="overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col bg-card border border-border/60 hover:border-primary/50 transform hover:-translate-y-1">
+                <CardHeader className="relative h-48 w-full p-0 bg-muted overflow-hidden"> {/* Added overflow-hidden */}
                     <Image
                         src={env.imageUrl}
                         alt={`Image of ${env.name}`}
                         layout="fill"
                         objectFit="cover"
-                        className="transition-transform duration-300 group-hover:scale-105"
+                        className="transition-transform duration-300 group-hover:scale-110" // Slightly stronger scale effect
                         unoptimized // Use if picsum causes issues or for performance
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <ChevronRight className="h-12 w-12 text-white/80" />
+                    {/* Subtle gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                     {/* Icon overlay on hover */}
+                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40">
+                        <ChevronRight className="h-16 w-16 text-white/90 stroke-[1.5]" />
                      </div>
                 </CardHeader>
-                <CardContent className="p-4 flex-grow flex flex-col justify-between">
+                <CardContent className="p-5 flex-grow flex flex-col justify-between">
                     <div>
-                    <CardTitle className="text-lg font-semibold mb-1 text-primary group-hover:text-accent transition-colors">{env.name}</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground line-clamp-2">{env.description}</CardDescription>
+                    <CardTitle className="text-xl font-semibold mb-1.5 text-primary transition-colors">{env.name}</CardTitle>
+                    <CardDescription className="text-sm text-muted-foreground line-clamp-3">{env.description}</CardDescription> {/* Allow more lines */}
                     </div>
                 </CardContent>
                 </Card>
@@ -80,9 +87,11 @@ export default function EnvironmentListPage() {
           </Link>
         ))}
       </div>
-       {!environments || environments.length === 0 && (
-            <div className="text-center py-10">
-                 <p className="text-muted-foreground">No environments found.</p>
+       {(!environments || environments.length === 0) && (
+            <div className="text-center py-16 col-span-full"> {/* Increased padding */}
+                 <Home className="h-16 w-16 text-muted-foreground mx-auto mb-5 opacity-50" />
+                 <p className="text-lg text-muted-foreground">No camera environments found.</p>
+                 {/* Optionally add a button to refresh or contact support */}
             </div>
        )}
     </div>
