@@ -126,9 +126,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
                dataString = `Type: ${data?.type}, Details: ${data?.details}, Fatal: ${data?.fatal}`;
            }
 
-           console.error(`HLS Error: ${dataString}`);
 
            if (data.fatal) {
+                console.error(`HLS Fatal Error: ${dataString}`); // Log fatal errors as error
                 console.error("HLS Fatal error encountered.");
                 let userMessage = `Stream error (${data.details}).`;
                 switch (data.type) {
@@ -163,10 +163,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
                 setErrorMessage(userMessage);
                 setStatus('error');
            } else {
-                console.warn(`HLS Non-fatal error: Type=${data.type}, Details=${data.details}`);
+                console.warn(`HLS Non-fatal Error: ${dataString}`); // Log non-fatal errors as warnings
                 if(data.details === 'fragLoadTimeOut' && status !== 'error' && status !== 'loading') {
                      console.warn("Fragment load timeout, might cause buffering...");
                  }
+                // Handle specific non-fatal errors if needed (e.g., bufferStalledError)
+                if (data.details === 'bufferStalledError') {
+                    console.warn("Buffer stalled, attempting recovery...");
+                    // HLS.js usually attempts recovery automatically with recoverMediaError=true
+                }
            }
        });
 
@@ -202,8 +207,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, videoRef: externalRef, c
       };
       const handlePlaying = () => {
           console.log("Video playing.");
-          if (status === 'loading') {
+          if (status === 'loading' || status === 'error') { // Clear error status on playback resume
             setStatus('ready');
+            setErrorMessage(null);
           }
            // Also try enabling capture stream when playing starts
            tryEnableCaptureStream(videoElement);
