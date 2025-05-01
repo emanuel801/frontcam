@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -9,7 +8,7 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download, CircleDot, StopCircle } from 'lucide-react'; // Added CircleDot, StopCircle
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download, CircleDot, StopCircle, DownloadCloud } from 'lucide-react'; // Added CircleDot, StopCircle, DownloadCloud
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -46,8 +45,9 @@ export default function CameraPlayerPage() {
   });
 
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
-  const [isLoadingSearch, setIsLoadingSearch] = useState(false);
+  const [isLoadingSearch, setIsLoadingSearch] = useState(isLoadingSearch);
   const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
+  const [searchEndDate, setSearchEndDate] = useState<Date | null>(null); // Track end time of searched recording
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null); // State for captured snapshot
   const [showSnapshotPreview, setShowSnapshotPreview] = useState<boolean>(false); // State to control preview visibility
   const [isRecording, setIsRecording] = useState<boolean>(false); // State for recording status
@@ -60,6 +60,7 @@ export default function CameraPlayerPage() {
            console.log("Setting initial live stream URL:", camera.streamUrl);
            setCurrentStreamUrl(camera.streamUrl);
            setSearchedTimestamp(null); // Ensure we are in live mode
+           setSearchEndDate(null); // Clear end date when going live
        } else if (!camera && !isLoadingCamera) {
            setCurrentStreamUrl(null);
        }
@@ -132,6 +133,7 @@ export default function CameraPlayerPage() {
         console.log("Timestamp search successful, new URL:", newUrl);
         setCurrentStreamUrl(newUrl);
         setSearchedTimestamp(variables.startDateTime); // Store start time
+        setSearchEndDate(variables.endDateTime); // Store end time
         setSnapshotUrl(null); // Clear snapshot when searching for new recording
         setShowSnapshotPreview(false); // Hide previous snapshot preview
         if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear existing timeout
@@ -139,7 +141,7 @@ export default function CameraPlayerPage() {
         setRecordedVideoUrl(null); // Clear previous recording
         toast({
           title: "Recording Found",
-          description: `Loading video starting from ${format(variables.startDateTime, 'PPpp')}.`,
+          description: `Loading video from ${format(variables.startDateTime, 'PPpp')} to ${format(variables.endDateTime, 'PPpp')}.`,
           className: "bg-green-100 border-green-300 text-green-800",
         });
          // Let browser controls handle play
@@ -160,6 +162,7 @@ export default function CameraPlayerPage() {
              console.log("Search failed, reverting to live stream URL:", camera.streamUrl);
              setCurrentStreamUrl(camera.streamUrl);
              setSearchedTimestamp(null); // Back to live mode
+             setSearchEndDate(null); // Clear end date
              setSnapshotUrl(null); // Clear snapshot
              setShowSnapshotPreview(false);
              if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
@@ -181,6 +184,7 @@ export default function CameraPlayerPage() {
           console.log("Switching back to live stream.");
           setCurrentStreamUrl(camera.streamUrl);
           setSearchedTimestamp(null);
+          setSearchEndDate(null); // Clear end date
           setSnapshotUrl(null); // Clear snapshot
           setShowSnapshotPreview(false); // Hide snapshot preview
           if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current); // Clear timeout
@@ -411,6 +415,51 @@ export default function CameraPlayerPage() {
         document.body.removeChild(link);
     };
 
+    // --- Download Segment Logic ---
+    const handleDownloadSegment = () => {
+        if (!searchedTimestamp || !searchEndDate || !camera) {
+            toast({
+                title: "Cannot Download Segment",
+                description: "Please search for a specific time range first.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const start = Math.floor(searchedTimestamp.getTime() / 1000);
+        const end = Math.floor(searchEndDate.getTime() / 1000);
+        const cameraName = camera.name.replace(/[^a-zA-Z0-9]/g, '_'); // Sanitize name for filename
+
+        // This is where you would typically make an API call to your backend
+        // The backend would then execute the curl command or similar logic.
+        const downloadUrl = `http://8.243.113.166:8083/manage/dvr/export_mp4/live/dahua_indoorH3A?start=${start}&end=${end}`; // Replace with your actual camera path if dynamic
+
+        console.log("--- Download Segment Request ---");
+        console.log("Camera ID:", cameraId);
+        console.log("Camera Name (Sanitized):", cameraName);
+        console.log("Start Timestamp:", start);
+        console.log("End Timestamp:", end);
+        console.log("Constructed Download URL (for backend):", downloadUrl);
+        console.log("Simulated curl command:");
+        console.log(`curl -o ${cameraName}_${start}_${end}.mp4 -v "${downloadUrl}"`);
+        console.log("----------------------------------");
+
+
+        toast({
+            title: "Download Segment Initiated (Simulated)",
+            description: "Check the browser console for the download details. A backend API is required for actual download.",
+            duration: 7000,
+        });
+
+        // In a real app, you might do this after getting a response from the backend:
+        // const link = document.createElement('a');
+        // link.href = backendResponse.downloadLink; // URL provided by the backend
+        // link.download = `${cameraName}_${start}_${end}.mp4`;
+        // document.body.appendChild(link);
+        // link.click();
+        // document.body.removeChild(link);
+    };
+
 
   // --- Render Logic ---
 
@@ -488,6 +537,7 @@ export default function CameraPlayerPage() {
                 ) : (
                    <>
                        <Clock className="h-3.5 w-3.5" /> Recording: {searchedTimestamp ? format(searchedTimestamp, 'dd/MM/yyyy HH:mm') : '...'}
+                       {searchEndDate && ` to ${format(searchEndDate, 'dd/MM/yyyy HH:mm')}`}
                    </>
                 )}
              </div>
@@ -523,7 +573,7 @@ export default function CameraPlayerPage() {
         {/* Hidden canvas for snapshot */}
         <canvas ref={canvasRef} className="hidden"></canvas>
 
-         {/* Control Buttons Area (Go Live, Capture Snapshot, Recording Controls) */}
+         {/* Control Buttons Area (Go Live, Capture Snapshot, Recording Controls, Download Segment) */}
          <div className="flex flex-wrap justify-center items-center gap-4 mt-4">
              {!isLive && (
                  <Button
@@ -545,15 +595,28 @@ export default function CameraPlayerPage() {
               >
                   <CameraIcon className="h-4 w-4" /> Capture Snapshot
               </Button>
-               {/* Show download button only if a snapshot has been captured (even if preview is hidden) */}
+               {/* Show download snapshot button only if a snapshot has been captured */}
                {snapshotUrl && (
                    <Button
                        onClick={handleDownloadSnapshot}
                        variant="link"
                        className="text-accent flex items-center gap-1.5"
-                       size="sm" // Make consistent size
+                       size="sm"
                    >
                        <Download className="h-4 w-4"/> Download Snapshot
+                   </Button>
+               )}
+
+               {/* Download Segment Button - Show only when viewing a recording */}
+                {!isLive && (
+                   <Button
+                       onClick={handleDownloadSegment}
+                       variant="outline"
+                       size="sm"
+                       className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-accent/10 border-accent/50 text-accent flex items-center gap-1.5"
+                       disabled={isLoadingSearch || isRecording || !searchedTimestamp || !searchEndDate} // Disable if live, loading, recording, or no valid range
+                   >
+                       <DownloadCloud className="h-4 w-4" /> Download Segment
                    </Button>
                )}
 
@@ -596,7 +659,7 @@ export default function CameraPlayerPage() {
                             </>
                        ) : (
                             <p className="text-xs text-muted-foreground italic w-full text-center">
-                                (Video recording not supported on this browser/device)
+                                (Browser recording not supported)
                             </p>
                        )}
                    </>
