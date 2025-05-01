@@ -8,7 +8,7 @@ import VideoPlayer from '@/components/features/cameras/VideoPlayer';
 import DateTimeSearch from '@/components/features/cameras/DateTimeSearch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download, CircleDot, StopCircle, DownloadCloud } from 'lucide-react'; // Added CircleDot, StopCircle, DownloadCloud
+import { WifiOff, Video, ChevronLeft, AlertTriangle, RefreshCw, Clock, RadioTower, Camera as CameraIcon, Download, CircleDot, StopCircle, DownloadCloud, HelpCircle } from 'lucide-react'; // Added HelpCircle as placeholder
 import type { Camera } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -595,6 +595,16 @@ export default function CameraPlayerPage() {
               >
                   <CameraIcon className="h-4 w-4" /> Capture Snapshot
               </Button>
+              {/* Placeholder button added */}
+               <Button
+                  onClick={() => toast({ title: "Placeholder", description: "This button does nothing yet." })}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg shadow-md transition-all hover:shadow-lg hover:bg-muted/80 flex items-center gap-1.5"
+                  disabled={isLoadingSearch}
+               >
+                  <HelpCircle className="h-4 w-4" /> Placeholder
+               </Button>
                {/* Show download snapshot button only if a snapshot has been captured */}
                {snapshotUrl && (
                    <Button
@@ -697,5 +707,3 @@ export default function CameraPlayerPage() {
     </div>
   );
 }
-
-    
