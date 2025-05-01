@@ -45,7 +45,7 @@ export default function CameraPlayerPage() {
   });
 
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
-  const [isLoadingSearch, setIsLoadingSearch] = useState(isLoadingSearch);
+  const [isLoadingSearch, setIsLoadingSearch] = useState(false); // Initialize with false
   const [searchedTimestamp, setSearchedTimestamp] = useState<Date | null>(null); // Track start time of searched recording
   const [searchEndDate, setSearchEndDate] = useState<Date | null>(null); // Track end time of searched recording
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null); // State for captured snapshot
@@ -697,3 +697,5 @@ export default function CameraPlayerPage() {
     </div>
   );
 }
+
+    
