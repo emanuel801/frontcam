@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -24,11 +25,10 @@ export default function BottomNav() {
 
   return (
     // Applied gradient background, increased blur, stronger shadow
+    // Changed grid to flex, added justify-around for horizontal layout
     <nav className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-card/95 via-card/90 to-card/95 backdrop-blur-md border-t border-border/50 shadow-2xl md:hidden z-50 h-18">
-      {/* Adjust grid columns based on number of items */}
       <div className={cn(
-        "grid items-center h-full max-w-md mx-auto px-2",
-         `grid-cols-${navItems.length}` // Dynamically set grid columns (will be 2)
+        "flex items-center justify-around h-full max-w-md mx-auto px-2" // Use flex and justify-around
       )}>
         {navItems.map((item) => {
            const isActive = item.href === '/cameras'
@@ -40,7 +40,7 @@ export default function BottomNav() {
               <Button
                 variant="ghost"
                 className={cn(
-                  "relative flex flex-col items-center justify-center h-full px-1 transition-all duration-300 ease-out transform focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none group overflow-hidden w-full hover:bg-transparent focus:bg-transparent", // Added hover/focus:bg-transparent
+                  "relative flex flex-col items-center justify-center h-full px-1 transition-all duration-300 ease-out transform focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none group overflow-hidden flex-1 hover:bg-transparent focus:bg-transparent", // Added flex-1 to distribute space, hover/focus:bg-transparent
                   isActive
                     ? 'text-primary scale-105 font-semibold' // Simpler active state - primary color, slight scale, bold
                     : 'text-muted-foreground hover:text-foreground' // Hover to foreground for inactive
@@ -76,3 +76,4 @@ export default function BottomNav() {
     </nav>
   );
 }
+
